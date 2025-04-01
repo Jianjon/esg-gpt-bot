@@ -1,8 +1,0 @@
-# OpenAI Settings
-OPENAI_API_KEY=your-api-key-here
-OPENAI_MODEL=gpt-3.5-turbo
-
-# Google Sheet Integration (optional)
-GOOGLE_SHEET_ID=
-GOOGLE_SERVICE_ACCOUNT=
-GOOGLE_SHEET_NAME=
