@@ -11,6 +11,38 @@ An interactive assistant for ESG learning, diagnostics and reporting, powered by
 - Markdown-style summary report
 - Modular Python architecture
 
+esg-gpt-bot/
+│
+├── main.py                      # 啟動主程式
+├── config.yaml                  # 系統設定檔
+│
+├── modules/
+│   ├── question_loader.py       # 題庫載入模組
+│   ├── flow_controller.py       # 題目流程控制模組
+│   ├── answer_saver.py          # 使用者回答紀錄模組
+│   ├── followup_engine.py       # 延伸提問建議模組
+│   ├── response_engine.py       # GPT 回覆生成模組
+│   ├── report_generator.py      # 報告生成模組
+│   ├── ui_state_manager.py      # UI 狀態切換管理模組
+│   ├── topic_manager.py         # 題庫切換管理模組
+│   ├── illustration_helper.py   # 插圖顯示與圖文補助模組
+│   ├── rag_engine.py            # 向量資料檢索模組（RAG核心）
+│   ├── embedding_indexer.py     # 建立與維護向量資料庫
+│   └── version_comparator.py    # 使用者版本變化分析模組（可選）
+│
+├── data/
+│   ├── questions_retail.csv     # 題庫：零售業
+│   ├── questions_hotel.csv      # 題庫：旅宿業
+│   └── ...                      # 其他產業題庫
+│
+├── knowledge_vector_db/         # RAG 資料庫儲存（可含 FAISS 檔案）
+│
+├── notes/
+│   ├── system_flow_plan.txt     # 系統流程設計文件
+│   └── module_plan_v2.txt       # 模組架構與任務定義文件
+│
+└── README.md                    # 專案介紹與使用說明
+
 ## 📁 Folder Structure
 - `/config`: environment or API settings
 - `/modules`: functional modules like question handling and reporting
