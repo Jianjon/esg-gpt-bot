@@ -1,0 +1,3 @@
+id,text,type,options
+1,你是否曾經進行碳盤查？,single,A:是,B:否
+2,公司是否有 ESG 負責人？,single,A:有,B:沒有,C:正在尋找
