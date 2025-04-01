@@ -1,0 +1,67 @@
+# config.yaml — ESG GPT 問答系統設定檔
+
+# ========== 使用者流程控制 ==========
+flow:
+  allow_jump: false                  # 是否允許跳題（flow_controller.py）
+  allow_backtrack: false            # 是否允許回頭修改答案（flow_controller.py）
+  default_stage: initial            # 預設階段：initial / advanced（flow_controller.py）
+  show_followup_suggestions: true   # 顯示延伸問題泡泡（followup_engine.py, ui_state_manager.py）
+
+# ========== 題庫設定 ==========
+question:
+  default_industry: "retail"        # 預設載入的產業題庫（question_loader.py）
+  data_path: "data/"                # 題庫檔案資料夾路徑（topic_manager.py）
+  csv_encoding: "utf-8"             # 題庫 CSV 讀取編碼（question_loader.py）
+  required_fields:                  # 題庫所需欄位（question_loader.py）
+    - id
+    - section
+    - text
+    - options
+    - explanation
+    - followups
+    - level
+    - industry_tag
+
+# ========== 回答儲存設定 ==========
+answers:
+  save_path: "userdata/answers/"    # 使用者作答儲存路徑（answer_saver.py）
+  save_format: "json"               # 儲存格式 json 或 sqlite（answer_saver.py）
+  enable_versioning: true           # 是否啟用版本控制（version_comparator.py）
+
+# ========== GPT 模型設定 ==========
+model:
+  provider: "openai"                # 模型提供者（response_engine.py）
+  use_rag: true                     # 啟用 RAG 模式（response_engine.py, rag_engine.py）
+  base_model: "gpt-3.5-turbo"       # 回應用語言模型（response_engine.py）
+  max_tokens: 800                   # 回應最大字數（response_engine.py）
+  temperature: 0.7                  # 回應創造力（response_engine.py）
+  system_prompt_path: "config/system_prompt.txt"  # 系統提示語檔案位置
+
+# ========== RAG 向量設定 ==========
+rag:
+  enable: true
+  index_path: "knowledge_vector_db/index.faiss"   # 向量資料庫路徑（rag_engine.py）
+  chunk_size: 300                   # 每段文字切片長度（embedding_indexer.py）
+  chunk_overlap: 30                # 重疊區塊長度（embedding_indexer.py）
+  retriever_top_k: 3               # 回傳最相關段落數（rag_engine.py）
+  embedding_model: "text-embedding-3-small"       # 向量模型（embedding_indexer.py）
+
+# ========== 報告與輸出 ==========
+report:
+  initial_length: 500              # 初階報告字數（report_generator.py）
+  advanced_length: 1000            # 進階報告字數（report_generator.py）
+  format: "text"                   # text / markdown / html（report_generator.py）
+  show_version_label: true         # 顯示版本標籤（version_comparator.py）
+
+# ========== UI 顯示與介面控制 ==========
+ui:
+  show_progress_bar: true          # 顯示進度條（ui_state_manager.py）
+  allow_collapsible_sidebar: true  # 側欄是否可收合（ui_state_manager.py）
+  fixed_question_area: true        # 問題欄是否固定置頂（ui_state_manager.py）
+  show_illustrations: true         # 是否顯示插圖（illustration_helper.py）
+  enable_dark_mode: false          # UI 是否使用深色模式（ui_state_manager.py）
+
+# ========== 題庫管理 ==========
+topic:
+  enable_metadata: true            # 是否啟用題庫 metadata 解析（topic_manager.py）
+  metadata_path: "data/metadata.json"
