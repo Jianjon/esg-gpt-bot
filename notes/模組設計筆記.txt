@@ -1,0 +1,11 @@
+# 模組設計備忘
+
+- question_loader：單純從 CSV 載入題目，格式需固定
+- response_engine：之後可接 GPT，現在先用假資料
+- report_generator：輸出 markdown 格式的摘要報告
+- main.py：流程控制，未來可接 UI 或 API
+
+目前先以文字互動為主，未來擴充點包含：
+- RAG 自動補充說明
+- GPT prompt 結構模組化
+- 使用者答題紀錄自動儲存
