@@ -23,7 +23,7 @@ if "industry" not in st.session_state:
     st.stop()
 
 if "stage" not in st.session_state:
-    st.session_state.stage = "basic"  # 初始進入為初階診斷
+    st.session_state.stage = "basic"
 
 # =====================
 # 側邊欄進度 + GPT 開關
@@ -54,6 +54,15 @@ current_q = session.get_current_question()
 # =====================
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+# 顯示進度條（上方）
+progress = session.get_progress()
+st.progress(progress["percent"] / 100, text=f"目前進度：{progress['answered']} / {progress['total']} 題")
+
+# 顯示目前主題名稱
+if current_q:
+    topic_name = current_q.get("topic", "未分類")
+    st.info(f"📌 目前主題：{topic_name}")
 
 # 顯示歷史對話
 for msg in st.session_state.messages:
@@ -105,7 +114,6 @@ else:
         st.markdown("### 📌 總體診斷")
         st.markdown(feedback_mgr.generate_overall_feedback())
 
-    # 進階診斷入口
     if st.session_state.stage == "basic":
         st.divider()
         st.subheader("🚀 您已完成初階診斷，是否進入進階診斷？")
