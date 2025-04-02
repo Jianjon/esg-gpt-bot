@@ -4,6 +4,7 @@ from managers.baseline_manager import BaselineManager
 from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
 from loaders.question_loader import load_questions
+from session_logger import save_to_json, load_from_json, save_to_sqlite
 from dotenv import load_dotenv
 import os
 import json
@@ -14,28 +15,6 @@ load_dotenv()
 st.set_page_config(page_title="ESG Service Path", layout="wide")
 st.title("ESG Service Path")
 st.caption("讓我們為您提供專屬建議，開始您的 ESG 之旅！")
-
-# =====================
-# 檔案儲存與自動續答
-# =====================
-def get_response_path(user_id):
-    return f"data/responses/{user_id}.json"
-
-def save_session_to_json(session):
-    os.makedirs("data/responses", exist_ok=True)
-    with open(get_response_path(session.user_id), "w", encoding="utf-8") as f:
-        json.dump(session.get_summary(), f, ensure_ascii=False, indent=2)
-
-def load_session_from_json(user_id, question_set):
-    path = get_response_path(user_id)
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        session = AnswerSession(user_id=user_id, question_set=question_set, stage=data.get("stage", "basic"))
-        session.responses = data.get("responses", [])
-        session.current_index = len(session.responses)
-        return session
-    return None
 
 # =====================
 # 啟動流程
@@ -53,7 +32,7 @@ user_id = "user1"
 question_set = load_questions(st.session_state.industry, st.session_state.stage)
 
 if "session" not in st.session_state:
-    session = load_session_from_json(user_id, question_set)
+    session = load_from_json(user_id, question_set)
     if session:
         if st.button("🔄 繼續上次答題進度"):
             st.session_state.session = session
@@ -128,7 +107,7 @@ if current_q:
 
     if st.button("提交回覆"):
         result = session.submit_response(response)
-        save_session_to_json(session)
+        save_to_json(session)
         if "error" in result:
             st.error(result["error"])
         else:
@@ -159,10 +138,9 @@ else:
         st.markdown("### 📌 總體診斷")
         st.markdown(feedback_mgr.generate_overall_feedback())
 
-    # 自動儲存結果
-    save_session_to_json(session)
+    save_to_json(session)
+    save_to_sqlite(session)
 
-    # 進入進階模式按鈕
     if st.session_state.stage == "basic":
         st.divider()
         st.subheader("🚀 您已完成初階診斷，是否進入進階診斷？")
