@@ -1,5 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
@@ -18,6 +19,7 @@ st.markdown("""
 
 with st.form("user_info_form"):
     name = st.text_input("👤 您的姓名")
+    email = st.text_input("📧 電子郵件（可選）")
     company = st.text_input("🏢 公司名稱")
     industry = st.selectbox("🏭 所屬產業類別", [
         "餐飲業", "旅宿業", "零售業", "小型製造業", "物流業", "辦公室服務業"
@@ -26,9 +28,10 @@ with st.form("user_info_form"):
 
     if start:
         if not name or not company:
-            st.warning("請填寫所有欄位後再開始診斷。")
+            st.warning("請填寫姓名與公司名稱後再開始診斷。")
         else:
             st.session_state.user_name = name
+            st.session_state.user_email = email
             st.session_state.company_name = company
             st.session_state.industry = industry
             st.session_state.stage = "basic"
