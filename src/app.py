@@ -3,61 +3,55 @@ from sessions.answer_session import AnswerSession
 from managers.baseline_manager import BaselineManager
 from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
+from dotenv import load_dotenv
+import os
+import json
+
+load_dotenv()  # 讀取 .env 中的 OPENAI_API_KEY
 
 st.set_page_config(page_title="ESG Service Path", layout="wide")
 st.title("ESG Service Path")
 st.caption("讓我們為您提供專屬建議，開始您的 ESG 之旅！")
 
 # =====================
-# 側邊欄：模擬學習進度與模組導航
+# 題庫載入函式
+# =====================
+def load_questions(stage):
+    if stage == "basic":
+        with open("data/questions/basic_questions.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        with open("data/questions/advanced_questions.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+
+# =====================
+# 側邊欄 UI
 # =====================
 with st.sidebar:
     st.header("ESG Service Path")
     st.markdown("---")
-    st.button("排放源辨識與確認")
-    st.button("報告需求與後續行動")
-    st.button("數據收集方式與能力")
-    st.button("邊界設定與組織資訊")
-    st.button("內部管理與SOP現況")
+    st.markdown(f"📘 當前模式：{'初階診斷' if st.session_state.get('stage', 'basic') == 'basic' else '進階診斷'}")
     st.markdown("---")
-    st.caption("學習進度")
+    use_gpt = st.checkbox("✅ 啟用 GPT 智能診斷建議", value=True)
+    st.caption("學習進度將於畫面下方顯示")
 
 # =====================
-# 初始化題庫與 baseline 載入
+# 初始化 Session 狀態
 # =====================
-question_set = [
-    {
-        "id": 1,
-        "text": "貴公司目前採取哪種能源策略？",
-        "options": ["可再生能源", "傳統能源", "混合能源"],
-        "type": "single"
-    },
-    {
-        "id": 2,
-        "text": "貴公司在社會責任方面有哪些措施？",
-        "options": ["員工福利", "社區參與", "慈善捐贈"],
-        "type": "multiple"
-    }
-]
+if "stage" not in st.session_state:
+    st.session_state.stage = "basic"
 
-baseline_path = "data/baselines/company_abc.json"
-bm = BaselineManager(baseline_path)
-company_baseline = bm.get_baseline()
-
-# =====================
-# 啟動答題 Session
-# =====================
 if "session" not in st.session_state:
     st.session_state.session = AnswerSession(
         user_id="user1",
-        question_set=question_set
+        question_set=load_questions(st.session_state.stage)
     )
 
 session = st.session_state.session
 current_q = session.get_current_question()
 
 # =====================
-# 對話泡泡互動介面
+# 對話泡泡 UI
 # =====================
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -90,15 +84,15 @@ if current_q:
             st.rerun()
 
 # =====================
-# 完成問卷後：報告與診斷建議
+# 問卷完成後報告區
 # =====================
 else:
     with st.chat_message("assistant"):
         st.success("✅ 問卷已完成，以下是診斷結果：")
 
-    summary = session.get_summary(company_baseline=company_baseline)
+    summary = session.get_summary(company_baseline=BaselineManager("data/baselines/company_abc.json").get_baseline())
     report = ReportManager(summary)
-    feedback_mgr = FeedbackManager(summary.get("comparison", []))
+    feedback_mgr = FeedbackManager(summary.get("comparison", []), use_gpt=use_gpt)
 
     with st.chat_message("assistant"):
         st.markdown("### 📄 報告內容")
@@ -110,3 +104,21 @@ else:
 
         st.markdown("### 📌 總體診斷")
         st.markdown(feedback_mgr.generate_overall_feedback())
+
+    # =====================
+    # 是否進入進階模式？
+    # =====================
+    if st.session_state.stage == "basic":
+        st.divider()
+        st.subheader("🚀 您已完成初階診斷，是否進入進階診斷？")
+        if st.button("👉 進入進階模式"):
+            st.session_state.stage = "advanced"
+            st.session_state.session = AnswerSession(
+                user_id="user1",
+                question_set=load_questions("advanced")
+            )
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": "🔄 已切換至進階診斷模式，我們將進行更深入的 ESG 問題探索。"
+            })
+            st.rerun()
