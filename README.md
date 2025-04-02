@@ -159,6 +159,54 @@ esg-gpt-bot/
 透過 GPT 模型輔助思考與設計，並配合 Markdown 文件管理與 GitHub 協作儲存，打造出高度模組化、可維護、可擴展的 ESG 顧問互動系統。
 
 ---
+# ✅ Field Spec Reference｜欄位與參數格式統一表
+
+本文件統一說明本系統內 ESG 顧問問答與報告模組中會使用到的欄位名稱、格式與是否為必要欄位，目的是為了：
+
+- ✅ 保證報告產生器可正確讀取資料
+- ✅ 語句模組能比對對應段落內容
+- ✅ 未來擴充產業、題庫與模型時不需要大改程式
+
+---
+
+## 📌 基本原則
+
+- 所有欄位名稱必須一致（不可簡寫或拼錯）
+- 所有題庫、語句模組（如 .md）、中介 JSON（如 answer_json）皆須遵循
+- 建議欄位順序也維持一致，利於比對與維護
+
+---
+
+## 📋 欄位規格總表
+
+| 欄位名稱             | 用途說明                                       | 是否必要 | 資料格式       |
+|----------------------|------------------------------------------------|----------|----------------|
+| `question_id`        | 題目編號（如 C001, S003）                      | ✅       | string         |
+| `industry_type`      | 產業分類（如：零售業、飯店業）                | ✅       | string         |
+| `question_text`      | 題目內容（用戶看到的文字）                    | ✅       | string         |
+| `topic_category`     | 主題分類（如：數據收集方式與能力）            | ✅       | string         |
+| `difficulty_level`   | 難度等級（目前統一為 beginner）               | ✅       | string (enum)  |
+| `report_section`     | 對應報告段落（五大主題：邊／源／算／報／查）  | ✅       | string (enum)  |
+| `learning_objective` | 題目的學習目的或核心概念說明                  | ⬜       | string         |
+| `answer_tags`        | 題目關鍵字（如：冷鏈物流、紙本發票）            | ✅       | string[]       |
+| `option_type`        | 題型類別（如：multiple、multi_learning）       | ✅       | string (enum)  |
+| `allow_custom_answer`| 是否允許自由作答                              | ✅       | bool           |
+| `allow_skip`         | 是否允許跳題                                  | ✅       | bool           |
+| `free_answer_note`   | 自由作答提示訊息（如：請說明現況）            | ✅       | string         |
+
+---
+
+## 🔖 出現位置建議
+
+- ✅ 題庫 `.csv`：每題一行，所有欄位皆需出現
+- ✅ 模組 `.md` 或 YAML：標頭段須包含至少 question_id、industry_type、report_section、answer_tags 等對應欄位
+- ✅ 程式產出報告使用的中介資料（如：answer_json）：依據本表欄位轉出 JSON 物件格式
+
+---
+
+若未來有新增欄位或需要刪減，請同步修改此文件並備註用途與格式。
+
+
 
 如需貢獻其他 Canvas 或修訂，請建立 `canvas_lX_xxx.md` 命名格式，並於本文件中登錄說明 ✍️
 
