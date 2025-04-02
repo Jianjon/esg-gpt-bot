@@ -203,6 +203,43 @@ esg-gpt-bot/
 - ✅ 程式產出報告使用的中介資料（如：answer_json）：依據本表欄位轉出 JSON 物件格式
 
 ---
+🧭 專案總覽
+本專案為一套針對 ESG 主題的互動式顧問系統，支援不同產業的題庫診斷、教學引導與報告產出。核心功能包括：
+
+多產業題庫（餐飲、飯店、零售、製造、物流、辦公室）
+
+初階＋進階題組邏輯
+
+自動產出報告（基於答題記錄與語句模組）
+
+可擴充的語句模組（Markdown + Metadata）
+
+AI 協作任務支援（回饋、補充、建議、學習輔助）
+
+🧱 專案結構簡介
+bash
+複製
+編輯
+/data/                    👉 各產業題庫 .csv
+/templates/report_sentences/  👉 語句模組（分主題）
+/canvas/                 👉 Canvas 系統設計圖（L1 ~ L6）
+/schema/                 👉 欄位與參數格式說明
+🔗 建議閱讀順序（協作者必讀）
+schema/diagnostic_fields.md
+📌 所有欄位名稱與格式說明，請務必遵守一致格式。
+
+canvas_l1_system_overview.md
+🧭 系統總覽架構，了解整體邏輯與模組配置。
+
+canvas_l3_question_data_mapping.md
+🔄 題庫資料與報告邏輯對應方式，解釋如何從答題連結到報告段落。
+
+templates/report_sentences/
+📄 所有產業＋主題的語句模組段落，報告生成依此邏輯進行。
+
+🤖 AI 協作支援
+請參考 canvas_l4ai_support.md，內含系統中 AI 參與的五個階段與欄位對應方式。
+
 
 若未來有新增欄位或需要刪減，請同步修改此文件並備註用途與格式。
 
