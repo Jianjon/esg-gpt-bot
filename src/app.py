@@ -13,22 +13,23 @@ import matplotlib.pyplot as plt
 load_dotenv()
 
 st.set_page_config(page_title="ESG Service Path", layout="wide")
-st.title("ESG Service Path")
-st.caption("讓我們為您提供專屬建議，開始您的 ESG 之旅！")
+st.title("ESG Service Path | 淨零小幫手")
+st.caption("您好，{}，歡迎來到 {} 的 ESG 診斷問卷。讓我們開始您的永續旅程！".format(
+    st.session_state.get("user_name", "訪客"),
+    st.session_state.get("company_name", "貴公司")
+))
 
 # =====================
 # 啟動流程
 # =====================
 if "industry" not in st.session_state:
-    st.session_state.industry = st.selectbox("請選擇您所屬的產業：", [
-        "餐飲業", "旅宿業", "零售業", "小型製造業", "物流業", "辦公室服務業"
-    ])
+    st.warning("請先從 welcome.py 進入並填寫基本資訊。")
     st.stop()
 
 if "stage" not in st.session_state:
     st.session_state.stage = "basic"
 
-user_id = "user1"
+user_id = f"{st.session_state.get('company_name', 'unknown')}_{st.session_state.get('user_name', 'user')}"
 question_set = load_questions(st.session_state.industry, st.session_state.stage)
 
 if "session" not in st.session_state:
@@ -52,12 +53,12 @@ current_q = session.get_current_question()
 with st.sidebar:
     st.header("ESG Service Path")
     st.markdown("---")
-    st.markdown(f"📘 當前產業：{st.session_state.industry}")
-    st.markdown(f"📶 當前模式：{'初階診斷' if st.session_state.stage == 'basic' else '進階診斷'}")
+    st.markdown(f"👤 使用者：{st.session_state.get('user_name', '')}")
+    st.markdown(f"🏢 公司：{st.session_state.get('company_name', '')}")
+    st.markdown(f"📘 產業：{st.session_state.industry}")
+    st.markdown(f"📶 模式：{'初階診斷' if st.session_state.stage == 'basic' else '進階診斷'}")
     use_gpt = st.checkbox("✅ 啟用 GPT 智能診斷建議", value=True)
     st.markdown("---")
-
-    # 主題進度條統計圖
     st.markdown("### 🧭 主題進度統計")
     topic_progress = session.get_topic_progress()
     topics = list(topic_progress.keys())
@@ -73,26 +74,22 @@ with st.sidebar:
     st.pyplot(fig)
 
 # =====================
-# 問卷答題主流程
+# 問卷流程
 # =====================
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 頂部進度條
 progress = session.get_progress()
 st.progress(progress["percent"] / 100, text=f"目前進度：{progress['answered']} / {progress['total']} 題")
 
-# 顯示主題提示
 if current_q:
     topic_name = current_q.get("topic", "未分類")
     st.info(f"📌 目前主題：{topic_name}")
 
-# 歷史訊息紀錄
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 顯示題目與互動區
 if current_q:
     q_text = f"**Q{session.current_index + 1}:** {current_q['text']}"
     with st.chat_message("assistant"):
@@ -107,49 +104,3 @@ if current_q:
 
     if st.button("提交回覆"):
         result = session.submit_response(response)
-        save_to_json(session)
-        if "error" in result:
-            st.error(result["error"])
-        else:
-            user_input = ", ".join(response) if isinstance(response, list) else response
-            st.session_state.messages.append({"role": "user", "content": user_input})
-            st.rerun()
-
-# =====================
-# 問卷完成結果顯示 + 進階切換
-# =====================
-else:
-    with st.chat_message("assistant"):
-        st.success("✅ 問卷已完成，以下是診斷結果：")
-
-    baseline = BaselineManager("data/baselines/company_abc.json").get_baseline()
-    summary = session.get_summary(company_baseline=baseline)
-    report = ReportManager(summary)
-    feedback_mgr = FeedbackManager(summary.get("comparison", []), use_gpt=use_gpt)
-
-    with st.chat_message("assistant"):
-        st.markdown("### 📄 報告內容")
-        st.markdown(f"```\n{report.generate_text_report()}\n```")
-
-        st.markdown("### 💡 題目建議與診斷")
-        for fb in feedback_mgr.generate_feedback():
-            st.markdown(f"**Q{fb['question_id']} 建議：** {fb['feedback']}")
-
-        st.markdown("### 📌 總體診斷")
-        st.markdown(feedback_mgr.generate_overall_feedback())
-
-    save_to_json(session)
-    save_to_sqlite(session)
-
-    if st.session_state.stage == "basic":
-        st.divider()
-        st.subheader("🚀 您已完成初階診斷，是否進入進階診斷？")
-        if st.button("👉 進入進階模式"):
-            st.session_state.stage = "advanced"
-            question_set = load_questions(st.session_state.industry, "advanced")
-            st.session_state.session = AnswerSession(user_id=user_id, question_set=question_set)
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": "🔄 已切換至進階診斷模式，我們將進行更深入的 ESG 問題探索。"
-            })
-            st.rerun()
