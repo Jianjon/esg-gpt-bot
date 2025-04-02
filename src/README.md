@@ -4,54 +4,54 @@
 📁 /src/loaders/question_loader.py
 功能：
 
-讀取 /data/ 內所有產業 .csv 題庫檔案
+- 讀取 /data/ 內所有產業 .csv 題庫檔案
 
-檢查欄位一致性（依據 schema）
+- 檢查欄位一致性（依據 schema）
 
-回傳以 industry_type 為 key 的題庫 dict
+- 回傳以 industry_type 為 key 的題庫 dict
 
 📁 /src/parsers/answer_parser.py
 功能：
 
-將使用者答題紀錄（JSON）轉為結構化格式
+- 將使用者答題紀錄（JSON）轉為結構化格式
 
-抽取每題的：question_id, report_section, answer_tags
+- 抽取每題的：question_id, report_section, answer_tags
 
-對應語句模組時使用
+- 對應語句模組時使用
 
 📁 /src/generators/report_generator.py
 功能：
 
-根據回答結果中的 industry_type + report_section + answer_tags
+- 根據回答結果中的 industry_type + report_section + answer_tags
 
-去 /templates/report_sentences/ 找對應內容
+- 去 /templates/report_sentences/ 找對應內容
 
-自動組合為：
+- 自動組合為：
 
-初階小段落報告（每 5 題）
+   - 初階小段落報告（每 5 題）
 
-全題完成後的完整報告（約 500 字）
+   - 全題完成後的完整報告（約 500 字）
 
 📁 /src/renderers/output_formatter.py
 功能：
 
-將報告輸出為純文字、HTML 或 Markdown
+- 將報告輸出為純文字、HTML 或 Markdown
 
-加上段落標題、標籤註記與報告時間戳
+- 加上段落標題、標籤註記與報告時間戳
 
 📁 /src/utils/validation.py
 功能：
 
-驗證題庫欄位是否符合 /schema/diagnostic_fields.md
+- 驗證題庫欄位是否符合 /schema/diagnostic_fields.md
 
-檢查每題是否有對應語句模組（避免漏段落）
+- 檢查每題是否有對應語句模組（避免漏段落）
 
 📁 /src/ui/cli_runner.py
 功能：
 
-提供 CLI 模式跑完整流程（可選題 → 生成報告）
+- 提供 CLI 模式跑完整流程（可選題 → 生成報告）
 
-模擬日後網頁或 API 接入的操作流程
+- 模擬日後網頁或 API 接入的操作流程
 
 
 
