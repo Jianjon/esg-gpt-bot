@@ -3,65 +3,64 @@ from sessions.answer_session import AnswerSession
 from managers.baseline_manager import BaselineManager
 from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
+from loaders.question_loader import load_questions
 from dotenv import load_dotenv
 import os
-import json
 
-load_dotenv()  # 讀取 .env 中的 OPENAI_API_KEY
+load_dotenv()
 
 st.set_page_config(page_title="ESG Service Path", layout="wide")
 st.title("ESG Service Path")
 st.caption("讓我們為您提供專屬建議，開始您的 ESG 之旅！")
 
 # =====================
-# 題庫載入函式
+# 產業選擇 + 階段模式管理
 # =====================
-def load_questions(stage):
-    if stage == "basic":
-        with open("data/questions/basic_questions.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    else:
-        with open("data/questions/advanced_questions.json", "r", encoding="utf-8") as f:
-            return json.load(f)
+if "industry" not in st.session_state:
+    st.session_state.industry = st.selectbox("請選擇您所屬的產業：", [
+        "餐飲業", "旅宿業", "零售業", "小型製造業", "物流業", "辦公室服務業"
+    ])
+    st.stop()
+
+if "stage" not in st.session_state:
+    st.session_state.stage = "basic"  # 初始進入為初階診斷
 
 # =====================
-# 側邊欄 UI
+# 側邊欄進度 + GPT 開關
 # =====================
 with st.sidebar:
     st.header("ESG Service Path")
     st.markdown("---")
-    st.markdown(f"📘 當前模式：{'初階診斷' if st.session_state.get('stage', 'basic') == 'basic' else '進階診斷'}")
+    st.markdown(f"📘 當前產業：{st.session_state.industry}")
+    st.markdown(f"📶 當前模式：{'初階診斷' if st.session_state.stage == 'basic' else '進階診斷'}")
     st.markdown("---")
     use_gpt = st.checkbox("✅ 啟用 GPT 智能診斷建議", value=True)
-    st.caption("學習進度將於畫面下方顯示")
 
 # =====================
-# 初始化 Session 狀態
+# 啟動 Session
 # =====================
-if "stage" not in st.session_state:
-    st.session_state.stage = "basic"
-
 if "session" not in st.session_state:
+    question_set = load_questions(st.session_state.industry, st.session_state.stage)
     st.session_state.session = AnswerSession(
         user_id="user1",
-        question_set=load_questions(st.session_state.stage)
+        question_set=question_set
     )
 
 session = st.session_state.session
 current_q = session.get_current_question()
 
 # =====================
-# 對話泡泡 UI
+# Chat 對話式問答介面
 # =====================
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 顯示歷史訊息
+# 顯示歷史對話
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 顯示目前問題
+# 顯示目前題目
 if current_q:
     q_text = f"**Q{session.current_index + 1}:** {current_q['text']}"
     with st.chat_message("assistant"):
@@ -84,13 +83,14 @@ if current_q:
             st.rerun()
 
 # =====================
-# 問卷完成後報告區
+# 完成答題：產出診斷建議 + 轉進階
 # =====================
 else:
     with st.chat_message("assistant"):
         st.success("✅ 問卷已完成，以下是診斷結果：")
 
-    summary = session.get_summary(company_baseline=BaselineManager("data/baselines/company_abc.json").get_baseline())
+    baseline = BaselineManager("data/baselines/company_abc.json").get_baseline()
+    summary = session.get_summary(company_baseline=baseline)
     report = ReportManager(summary)
     feedback_mgr = FeedbackManager(summary.get("comparison", []), use_gpt=use_gpt)
 
@@ -105,18 +105,14 @@ else:
         st.markdown("### 📌 總體診斷")
         st.markdown(feedback_mgr.generate_overall_feedback())
 
-    # =====================
-    # 是否進入進階模式？
-    # =====================
+    # 進階診斷入口
     if st.session_state.stage == "basic":
         st.divider()
         st.subheader("🚀 您已完成初階診斷，是否進入進階診斷？")
         if st.button("👉 進入進階模式"):
             st.session_state.stage = "advanced"
-            st.session_state.session = AnswerSession(
-                user_id="user1",
-                question_set=load_questions("advanced")
-            )
+            question_set = load_questions(st.session_state.industry, "advanced")
+            st.session_state.session = AnswerSession(user_id="user1", question_set=question_set)
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": "🔄 已切換至進階診斷模式，我們將進行更深入的 ESG 問題探索。"
