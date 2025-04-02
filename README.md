@@ -76,15 +76,23 @@ esg-gpt-bot/
 
 ---
 
-## 📚 題庫格式規範
+# ESG 題庫管理系統
 
-放置於 `data/`，格式為 `.csv`，需包含欄位：
+本專案整理並管理六大產業的 ESG 教學與診斷題庫，包含：
 
-```
-id, section, text, options, explanation, followups, level, industry_tag
-```
+- 餐飲業（Restaurant）
+- 旅宿業（Hotel）
+- 零售業（Retail）
+- 小型製造業（SmallManufacturing）
+- 物流業（Logistics）
+- 辦公室與服務業（Offices）
 
----
+## 檔案結構說明
+
+- `data/`：各產業題庫資料，格式為 CSV。
+- `schema/question_schema.md`：欄位說明與設計規則。
+- `demo/demo_questions.csv`：展示題型格式範例。
+
 
 ## 📈 報告產出方式
 
