@@ -1,37 +1,34 @@
 import streamlit as st
 from sessions.answer_session import AnswerSession
+from sessions.context_tracker import add_context_entry, get_all_summaries
 from managers.baseline_manager import BaselineManager
 from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
 from loaders.question_loader import load_questions
 from session_logger import save_to_json, load_from_json, save_to_sqlite
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
 import os
 import json
-import matplotlib.pyplot as plt
 
 load_dotenv()
 
-st.set_page_config(page_title="ESG Service Path", layout="wide")
-st.title("ESG Service Path | 淨零小幫手")
-st.caption("您好，{}，歡迎來到 {} 的 ESG 診斷問卷。讓我們開始您的永續旅程！".format(
-    st.session_state.get("user_name", "訪客"),
-    st.session_state.get("company_name", "貴公司")
-))
+st.set_page_config(page_title="ESG 問卷診斷", layout="wide")
+st.title("📋 ESG 智能問卷診斷 | 淨零小幫手")
 
-# =====================
-# 啟動流程
-# =====================
-if "industry" not in st.session_state:
+# --- 基本驗證 ---
+if "user_name" not in st.session_state or "industry" not in st.session_state:
     st.warning("請先從 welcome.py 進入並填寫基本資訊。")
     st.stop()
 
 if "stage" not in st.session_state:
     st.session_state.stage = "basic"
 
+# --- 問題與使用者 ID 初始化 ---
 user_id = f"{st.session_state.get('company_name', 'unknown')}_{st.session_state.get('user_name', 'user')}"
 question_set = load_questions(st.session_state.industry, st.session_state.stage)
 
+# --- Session 初始化或載入 ---
 if "session" not in st.session_state:
     session = load_from_json(user_id, question_set)
     if session:
@@ -47,60 +44,76 @@ if "session" not in st.session_state:
 session = st.session_state.session
 current_q = session.get_current_question()
 
-# =====================
-# 側邊欄 UI
-# =====================
+# --- 側邊欄 ---
 with st.sidebar:
-    st.header("ESG Service Path")
+    st.header("👤 使用者資訊")
+    st.markdown(f"**姓名：** {st.session_state.user_name}")
+    st.markdown(f"**Email：** {st.session_state.get('user_email', '-')}")
+    st.markdown(f"**公司：** {st.session_state.company_name}")
+    st.markdown(f"**產業類別：** {st.session_state.industry}")
+    st.markdown(f"**階段：** {'初階' if st.session_state.stage == 'basic' else '進階'}")
     st.markdown("---")
-    st.markdown(f"👤 使用者：{st.session_state.get('user_name', '')}")
-    st.markdown(f"🏢 公司：{st.session_state.get('company_name', '')}")
-    st.markdown(f"📘 產業：{st.session_state.industry}")
-    st.markdown(f"📶 模式：{'初階診斷' if st.session_state.stage == 'basic' else '進階診斷'}")
-    use_gpt = st.checkbox("✅ 啟用 GPT 智能診斷建議", value=True)
-    st.markdown("---")
-    st.markdown("### 🧭 主題進度統計")
+    st.markdown("### 📊 主題進度概覽")
     topic_progress = session.get_topic_progress()
     topics = list(topic_progress.keys())
     answered = [v["answered"] for v in topic_progress.values()]
     totals = [v["total"] for v in topic_progress.values()]
-
     fig, ax = plt.subplots()
-    ax.barh(topics, totals, color="#ddd", label="總題數")
+    ax.barh(topics, totals, color="#eee", label="總題數")
     ax.barh(topics, answered, color="#4CAF50", label="已完成")
-    ax.set_xlabel("題數")
     ax.invert_yaxis()
     ax.legend()
     st.pyplot(fig)
 
-# =====================
-# 問卷流程
-# =====================
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
+# --- 問卷流程 ---
 progress = session.get_progress()
 st.progress(progress["percent"] / 100, text=f"目前進度：{progress['answered']} / {progress['total']} 題")
 
 if current_q:
-    topic_name = current_q.get("topic", "未分類")
-    st.info(f"📌 目前主題：{topic_name}")
-
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-if current_q:
-    q_text = f"**Q{session.current_index + 1}:** {current_q['text']}"
-    with st.chat_message("assistant"):
-        st.markdown(q_text)
-
-    st.session_state.messages.append({"role": "assistant", "content": q_text})
+    st.markdown(f"### ❓ 問題 {session.current_index + 1}")
+    st.markdown(current_q["text"])
 
     if current_q["type"] == "single":
-        response = st.radio("請選擇：", current_q["options"])
+        response = st.radio("請選擇一個選項：", current_q["options"])
     else:
-        response = st.multiselect("請選擇一或多個項目：", current_q["options"])
+        response = st.multiselect("可複選：", current_q["options"])
 
-    if st.button("提交回覆"):
+    if st.button("✅ 提交回答"):
         result = session.submit_response(response)
+        add_context_entry(current_q["id"], response, current_q["text"])
+        save_to_json(session)
+        if "error" in result:
+            st.error(result["error"])
+        else:
+            st.rerun()
+else:
+    st.success("🎉 您已完成本階段問卷！")
+    baseline = BaselineManager("data/baselines/company_abc.json").get_baseline()
+    summary = session.get_summary(company_baseline=baseline)
+    summary["user_name"] = st.session_state.get("user_name")
+    summary["company_name"] = st.session_state.get("company_name")
+    report = ReportManager(summary)
+    feedback_mgr = FeedbackManager(summary.get("comparison", []))
+
+    st.markdown("## 📄 診斷摘要報告")
+    st.markdown(f"```\n{report.generate_text_report()}\n```")
+
+    st.markdown("## 💡 題目建議與改善方向")
+    for fb in feedback_mgr.generate_feedback():
+        st.markdown(f"- **{fb['question_id']} 建議：** {fb['feedback']}")
+
+    st.markdown("## 📌 總體建議")
+    st.markdown(feedback_mgr.generate_overall_feedback())
+
+    save_to_json(session)
+    save_to_sqlite(session)
+
+    # 進入進階診斷
+    if st.session_state.stage == "basic":
+        st.divider()
+        st.subheader("🚀 您已完成初階診斷，是否進入進階階段？")
+        if st.button("👉 進入進階問卷"):
+            st.session_state.stage = "advanced"
+            new_qset = load_questions(st.session_state.industry, "advanced")
+            st.session_state.session = AnswerSession(user_id=user_id, question_set=new_qset)
+            st.rerun()
