@@ -1,7 +1,7 @@
 import openai
 import os
 
-# 載入 API 金鑰（建議用環境變數管理）
+# 從環境變數中讀取 OpenAI API 金鑰
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class LLMFeedback:
