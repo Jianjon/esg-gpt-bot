@@ -1,8 +1,6 @@
 import streamlit as st
-import os
-from pathlib import Path
-from src.sessions.answer_session import AnswerSession
 from src.loaders.question_loader import load_questions
+from src.sessions.answer_session import AnswerSession
 from src.context.context_tracker import ContextTracker
 from src.managers.report_generator import generate_report
 from src.retriever.vector_guard import VectorStore
@@ -11,6 +9,7 @@ from openai import OpenAI
 import openai
 from src.managers.question_router import route_next_question
 from src.managers.gpt_rewrite import rewrite_question_to_conversational
+from src.utils.topic_progress import get_topic_progress
 
 # 載入自訂樣式
 def local_css(file_path):
@@ -19,10 +18,39 @@ def local_css(file_path):
 
 local_css("assets/custom_style.css")
 
-st.set_page_config(page_title="ESG 顧問問答", layout="wide")
-st.title("ESG 顧問式診斷問卷")
+# 設置頁面標題與配置
+st.set_page_config(page_title="淨零小幫手：溫室氣體盤查", layout="wide")
+st.title("淨零小幫手：溫室氣體盤查")
 
-# 初始化狀態
+# --- Sidebar：ChatGPT 風格的 ESG Service Path ---
+st.sidebar.markdown("## ESG Service Path")
+st.sidebar.markdown("---")
+
+# 顯示使用者名稱
+user_name = st.session_state.get("user", "Guest")
+st.sidebar.markdown(f"使用者：**{user_name}**")
+
+# 顯示目前題號進度
+current_idx = st.session_state.get("current_index", 0)
+total_questions = st.session_state.get("question_count", 0)
+if total_questions > 0:
+    st.sidebar.markdown(f"進度：第 **{current_idx+1}** 題 / 共 **{total_questions}** 題")
+
+# 顯示主題進度圖（使用 topic_progress）
+topic_progress = st.session_state.get("topic_progress", {})
+if topic_progress:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 主題進度")
+    fig = get_topic_progress(topic_progress)
+    st.sidebar.pyplot(fig)
+
+# 開始新問卷按鈕
+st.sidebar.markdown("---")
+if st.sidebar.button("開始新問卷"):
+    st.session_state.clear()
+    st.experimental_rerun()
+
+# 初始化問卷狀態
 if 'welcome_submitted' not in st.session_state or not st.session_state['welcome_submitted']:
     st.warning("請先完成產業選擇與公司基本資料填寫。")
     st.stop()
