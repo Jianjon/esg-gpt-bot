@@ -6,6 +6,7 @@ from src.loaders.question_loader import load_questions
 from src.context.context_tracker import ContextTracker
 from src.managers.report_generator import generate_report
 from src.retriever.vector_guard import VectorStore
+from src.managers.guided_rag import GuidedRAG
 from openai import OpenAI
 import openai
 from src.managers.question_router import route_next_question
@@ -60,54 +61,44 @@ else:
         report = generate_report(session.get_answers(), tracker.get_summary())
         st.text_area("診斷報告：", report, height=400)
 
-# ====== 自由問答區（RAG 整合）======
+# ====== 引導式自由問答（進階支援）======
 st.markdown("---")
-st.subheader("自由提問")
+st.subheader("需要幫助嗎？與顧問聊聊：")
 
-vector_store = VectorStore()
-vector_path = Path("data/vector_output")
+vector_path = "data/vector_output"
+guided_rag = GuidedRAG(vector_path=vector_path)
 
-if not vector_store.exists(vector_path):
-    st.info("目前尚未建立向量資料庫，無法使用自由問答功能。")
-    st.stop()
-else:
-    vector_store.load(vector_path)
-    custom_question = st.text_input("你想詢問的其他 ESG 問題是？")
+if 'guided_chat' not in st.session_state:
+    st.session_state['guided_chat'] = []
+if 'guided_turns' not in st.session_state:
+    st.session_state['guided_turns'] = 0
 
-    if custom_question:
-        st.markdown(f"<div class='user-message'>{custom_question}</div>", unsafe_allow_html=True)
+user_question = st.text_input("輸入你對此題的疑問，或直接輸入『不知道』：", key=f"help_{session.current_index}")
 
-        # 搜尋相關段落
-        similar_chunks = vector_store.search(custom_question, top_k=5)
+if user_question:
+    st.session_state['guided_turns'] += 1
+    st.session_state['guided_chat'].append(("user", user_question))
 
-        # 整理作為 context 傳給 GPT
-        context_text = "\n\n".join([chunk['text'] for chunk in similar_chunks])
+    ai_reply, related_chunks = guided_rag.ask(
+        user_question,
+        history=st.session_state['guided_chat'],
+        turn=st.session_state['guided_turns']
+    )
 
-        system_prompt = """
-你是一位熟悉 ESG 與碳盤查的顧問，請根據以下知識段落回答使用者的問題。
-若無相關資訊，請誠實說明。請使用條列式清楚回答。
+    st.markdown(f"<div class='ai-message'>{ai_reply}</div>", unsafe_allow_html=True)
+    st.session_state['guided_chat'].append(("assistant", ai_reply))
 
-以下是參考資料：
-""" + context_text
+    with st.expander("參考資料段落"):
+        for chunk in related_chunks:
+            st.markdown(f"**{chunk['source']}** - 第 {chunk['page']} 頁")
+            st.markdown(f"> {chunk['text'][:300]}...\n")
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": custom_question}
-        ]
-
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-4o",
-                messages=messages,
-                temperature=0.3
-            )
-            answer = response.choices[0].message.content.strip()
-
-            st.markdown(f"<div class='ai-message'>{answer}</div>", unsafe_allow_html=True)
-
-            with st.expander("查看引用段落"):
-                for chunk in similar_chunks:
-                    st.markdown(f"**{chunk['source']}** - 第 {chunk['page']} 頁")
-                    st.markdown(f"> {chunk['text'][:300]}...\n")
-        except Exception as e:
-            st.error(f"❌ 查詢失敗：{str(e)}")
+    if st.session_state['guided_turns'] >= 3:
+        st.info("這題若仍無法判斷，我們可以先進入下一題。")
+        if st.button("跳過此題"):
+            session.save_answer("（未回答）")
+            tracker.update(current_q['id'], "未回答（由引導系統記錄）")
+            session.advance()
+            st.session_state['guided_turns'] = 0
+            st.session_state['guided_chat'] = []
+            st.experimental_rerun()
