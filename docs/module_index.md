@@ -31,6 +31,16 @@ esg-gpt-bot/
 │   ├── db_pdf_data/
 │   └── vector_output/
 ```
+---
+## 📍 Mermaid Canvas（模組對接圖）
+
+flowchart TD
+    user --> welcome
+    welcome --> consult_chat_app
+    consult_chat_app --> question_router --> answer_session
+    consult_chat_app --> context_tracker
+    context_tracker --> vector_guard --> vector_store
+    consult_chat_app --> report_generator
 
 ---
 
