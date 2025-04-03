@@ -1,0 +1,72 @@
+/* ========= 基本設定 ========= */
+body {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 16px;
+    color: #333;
+    background-color: #ffffff;
+}
+
+/* ========= 對話區塊 ========= */
+.user-message {
+    background-color: #e6f0ff;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    align-self: flex-end;
+    max-width: 80%;
+}
+
+.ai-message {
+    background-color: #f0f0f0;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    align-self: flex-start;
+    max-width: 80%;
+}
+
+/* ========= 固定題目區 ========= */
+.fixed-question {
+    position: sticky;
+    top: 0;
+    background-color: #ffffff;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 17px;
+    border-bottom: 1px solid #ddd;
+    z-index: 10;
+}
+
+/* ========= 建議問題 ========= */
+.suggestion {
+    color: #666;
+    font-size: 14px;
+    margin-top: 6px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.suggestion:hover {
+    background-color: #f2f2f2;
+}
+
+/* ========= 按鈕區塊 ========= */
+button, .stButton > button {
+    background-color: #ffffff;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+button:hover, .stButton > button:hover {
+    background-color: #f2f2f2;
+}
+
+/* ========= Sidebar 樣式 ========= */
+/* 使用 st.sidebar.expander 控制收合即可，不建議強制隱藏 */
