@@ -1,4 +1,18 @@
-streamlit>=1.32.0
-pandas>=2.1.0
-openai>=1.0.0
+# 核心套件
+langchain>=0.1.0
+openai>=1.12.0
 python-dotenv>=1.0.0
+
+# PDF 處理
+PyMuPDF>=1.23.8  # fitz
+
+# 向量處理
+faiss-cpu>=1.7.4
+numpy>=1.24.0
+
+# 進度顯示
+tqdm>=4.66.1
+
+# 其他工具
+streamlit>=1.31.0  # 用於 app.py
+matplotlib>=3.8.0  # 用於繪圖

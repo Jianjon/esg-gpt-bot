@@ -10,6 +10,15 @@ from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 import os
 import json
+from pathlib import Path
+import logging
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import faiss
+import fitz  # PyMuPDF
+from typing import List, Dict, Tuple
+import re
+from vector_builder import PDFProcessor, MetadataHandler
 
 load_dotenv()
 
@@ -117,3 +126,85 @@ else:
             new_qset = load_questions(st.session_state.industry, "advanced")
             st.session_state.session = AnswerSession(user_id=user_id, question_set=new_qset)
             st.rerun()
+
+# 設置 OpenAI API
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    dimensions=1536
+)
+
+# 設置文本分割器
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=400,
+    chunk_overlap=50,
+    separators=["\n\n", "\n", "。", ".", "!", "?", "！", "？"],
+    keep_separator=True
+)
+
+# 主要處理流程
+def process_pdf(pdf_path: Path):
+    # 1. 讀取 PDF
+    # 2. 分段
+    # 3. 生成 metadata
+    # 4. 建立向量
+    # 5. 儲存到 FAISS
+    pass
+
+class ChunkMetadata:
+    def __init__(self, pdf_path: Path, page: int, section: int):
+        self.chunk_id = f"{pdf_path.stem}-p{page}-s{section}"
+        self.source = pdf_path.name
+        self.path = str(pdf_path.parent.relative_to(base_dir))
+        self.main_topic = self._extract_topic(pdf_path)
+        self.industry = self._extract_industry(pdf_path)
+        self.region = self._extract_region(pdf_path)
+        self.page = page
+        self.title = ""  # 從 PDF 提取
+        self.language = self._detect_language()
+
+class VectorStore:
+    def __init__(self):
+        self.dimension = 1536
+        self.index = faiss.IndexFlatIP(self.dimension)  # cosine similarity
+        self.metadata = []
+    
+    def add_vectors(self, vectors, metadata_list):
+        self.index.add(vectors)
+        self.metadata.extend(metadata_list)
+    
+    def save(self, output_dir: Path):
+        faiss.write_index(self.index, str(output_dir / 'faiss_index.index'))
+        with open(output_dir / 'chunk_metadata.json', 'w') as f:
+            json.dump(self.metadata, f, indent=2)
+
+def main():
+    # 設置日誌
+    logging.basicConfig(
+        filename='data/vector_output/build_log.txt',
+        level=logging.INFO
+    )
+    
+    # 建立輸出目錄
+    output_dir = Path('data/vector_output')
+    output_dir.mkdir(exist_ok=True)
+    
+    # 處理每個資料夾
+    base_dir = Path('data/db_pdf_data')
+    for folder in ['cases', 'international', 'taiwan']:
+        process_folder(base_dir / folder)
+
+    # 在main.py中使用
+    pdf_processor = PDFProcessor()
+    metadata_handler = MetadataHandler()
+
+    def process_single_pdf(pdf_path: Path):
+        # 處理PDF並獲取chunks
+        chunks_with_metadata = pdf_processor.process_pdf(pdf_path)
+        
+        # 擴充metadata
+        enriched_chunks = []
+        for chunk, metadata in chunks_with_metadata:
+            enriched_metadata = metadata_handler.enrich_metadata(metadata, chunk)
+            enriched_chunks.append((chunk, enriched_metadata))
+        
+        return enriched_chunks
