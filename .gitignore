@@ -172,3 +172,29 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# ❌ 不要上傳 PDF 原始檔案（知識庫）
+data/db_pdf_data/
+
+# ❌ 不要上傳向量儲存結果（FAISS index、metadata）
+data/vector_output/
+
+# ❌ 不要上傳對話紀錄（未來 session 存檔）
+data/session_history/
+
+# ❌ 不要上傳環境變數檔案（包含 OpenAI API 金鑰）
+.env
+.env.*
+
+# ❌ 不要上傳 Python 編譯暫存檔
+__pycache__/
+*.pyc
+*.pyo
+
+# ❌ 不要上傳 VS Code 設定（可選）
+.vscode/
+*.code-workspace
+
+# ❌ 不要上傳測試用 log 檔或中間產物
+*.log
+*.tmp
