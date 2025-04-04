@@ -19,7 +19,7 @@ import faiss
 import fitz  # PyMuPDF
 from typing import List, Dict, Tuple
 import re
-from vector_builder import PDFProcessor, MetadataHandler
+from src.vector_builder.pdf_processor import PDFProcessor, MetadataHandler
 
 # --- 環境設定 ---
 st.set_page_config(page_title="ESG 問卷診斷", layout="wide")
