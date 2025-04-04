@@ -1,3 +1,9 @@
+# --- 初始化環境（修正找不到自訂模組問題）---
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+
+# --- 套件與模組載入 ---
 import streamlit as st
 from sessions.answer_session import AnswerSession
 from sessions.context_tracker import add_context_entry, get_all_summaries
@@ -8,7 +14,6 @@ from loaders.question_loader import load_questions
 from session_logger import save_to_json, load_from_json, save_to_sqlite
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
-import os
 import json
 from pathlib import Path
 import logging
