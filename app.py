@@ -29,6 +29,18 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import faiss
 import fitz  # PyMuPDF
+from typing import List, Dict, Tuple
+import re
+from src.vector_builder.pdf_processor import PDFProcessor, MetadataHandler
+
+# --- 環境設定 ---
+st.set_page_config(page_title="ESG 問卷診斷", layout="wide")
+st.title("📋 ESG 智能問卷診斷 | 淨零小幫手")
+
+# --- 基本驗證 ---
+if "user_name" not in st.session_state or "industry" not in st.session_state:
+    st.warning("請先從 welcome.py 進入並填寫基本資訊。")
+    st.stop()
 
 if "stage" not in st.session_state:
     st.session_state.stage = "basic"
