@@ -6,7 +6,15 @@ body {
     background-color: #ffffff;
 }
 
-/* ========= 對話區塊 ========= */
+/* ========= 主容器調整：內容集中，整體上移 ========= */
+section.main > div.block-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-top: 1rem;
+    padding-bottom: 120px; /* 預留 chat 輸入欄空間 */
+}
+
+/* ========= 對話訊息區塊 ========= */
 .user-message {
     background-color: #e6f0ff;
     padding: 12px 16px;
@@ -18,14 +26,61 @@ body {
 
 .ai-message {
     background-color: #f0f0f0;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    align-self: flex-start;
+    border-left: 4px solid #4caf50;
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 16px;
     max-width: 80%;
 }
 
-/* ========= 固定題目區 ========= */
+/* ========= 題目說明與選項區塊 ========= */
+.question-section {
+    margin-bottom: 1.5rem;
+    padding: 0.5rem 1rem;
+    line-height: 1.6;
+}
+
+.option-block {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding-left: 1rem;
+    font-size: 15px;
+    color: #444;
+}
+
+/* ========= GPT 風格輸入欄固定底部 ========= */
+.chat-input-area {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 960px;
+    padding: 10px 20px;
+    background-color: #ffffff;
+    border-top: 1px solid #ddd;
+    z-index: 50;
+}
+
+/* 輸入欄與送出按鈕 */
+.chat-input-area input {
+    width: 80%;
+    padding: 10px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-right: 8px;
+}
+
+.chat-input-area button {
+    padding: 10px 16px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* ========= 題目標題區（吸附頂部） ========= */
 .fixed-question {
     position: sticky;
     top: 0;
@@ -35,24 +90,51 @@ body {
     font-size: 17px;
     border-bottom: 1px solid #ddd;
     z-index: 10;
+    color: #333;
 }
 
-/* ========= 建議問題 ========= */
-.suggestion {
-    color: #666;
-    font-size: 14px;
-    margin-top: 6px;
+/* ========= Sidebar 樣式 ========= */
+.sidebar .css-1v3fvcr {
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+}
+
+.sidebar .css-1v3fvcr small {
+    font-size: 18px;
+    font-weight: normal;
+    color: #5f6368;
+}
+
+/* GPT 風格子題目列表（非按鈕） */
+.sidebar .question-item {
+    padding: 6px 10px;
+    font-size: 15px;
+    color: #333;
+    border: none;
+    background: transparent;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
     transition: background-color 0.2s ease;
 }
 
-.suggestion:hover {
-    background-color: #f2f2f2;
+.sidebar .question-item:hover {
+    background-color: #f7f7f7;
 }
 
-/* ========= 按鈕區塊 ========= */
+/* 題目已完成勾選符號 */
+.sidebar .question-item.completed::after {
+    content: "✔";
+    color: #4caf50;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+/* ========= 按鈕樣式 ========= */
 button, .stButton > button {
     background-color: #ffffff;
     color: #333;
@@ -68,22 +150,7 @@ button:hover, .stButton > button:hover {
     background-color: #f2f2f2;
 }
 
-/* ========= Sidebar 樣式 ========= */
-/* 調整 Sidebar 標題 */
-.sidebar .css-1v3fvcr {
-    font-size: 22px;
-    font-weight: bold;
-    color: #333;
-}
-
-/* 設定使用者名稱顯示樣式 */
-.sidebar .css-1v3fvcr {
-    font-size: 18px;
-    font-weight: normal;
-    color: #5f6368;
-}
-
-/* 按鈕樣式 */
+/* Streamlit 特定按鈕強化 */
 button.stButton {
     background-color: #0084ff;
     color: white;
@@ -92,33 +159,4 @@ button.stButton {
 
 button.stButton:hover {
     background-color: #0066cc;
-}
-
-/* 調整進度條顯示 */
-.sidebar .stProgressBar .stProgress {
-    background-color: #4caf50;
-}
-
-/* 調整選擇題目文字顏色 */
-div.fixed-question {
-    font-size: 18px;
-    color: #333;
-    font-weight: bold;
-}
-
-/* AI 回答框的樣式 */
-.ai-message {
-    background-color: #f1f1f1;
-    border-left: 4px solid #4caf50;
-    padding: 10px;
-    margin-bottom: 10px;
-    font-size: 16px;
-}
-
-/* 使用者訊息框的樣式 */
-.user-message {
-    background-color: #e2e2e2;
-    padding: 10px;
-    margin-top: 10px;
-    font-size: 16px;
 }

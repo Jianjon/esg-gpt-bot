@@ -2,9 +2,9 @@ class AnswerSession:
     def __init__(self, user_id: str, question_set: list, stage: str = 'survey'):
         self.user_id = user_id
         self.stage = stage  # 'basic' 或 'advanced'
-        self.question_set = question_set  # 問題需包含 id, text, options, type
+        self.question_set = question_set
         self.current_index = 0
-        self.responses = []  # 記錄所有回答
+        self.responses = []
         self.finished = False
 
     def get_current_question(self):
@@ -19,13 +19,11 @@ class AnswerSession:
         if question is None:
             return {"error": "No more questions."}
 
-        # 檢查格式
         if question["type"] == "single" and not isinstance(response, str):
             return {"error": "Single-choice question requires a string response."}
         elif question["type"] == "multiple" and not isinstance(response, list):
             return {"error": "Multiple-choice question requires a list of responses."}
 
-        # 記錄回應
         self.responses.append({
             "question_id": question["id"],
             "question_text": question["text"],
@@ -33,17 +31,28 @@ class AnswerSession:
             "question_type": question["type"],
             "topic": question.get("topic", "未分類")
         })
+
         self.current_index += 1
         return {"submitted": True, "next_question": self.get_current_question()}
+
+    def jump_to(self, index: int):
+        """允許從 sidebar 跳到指定題號"""
+        if 0 <= index < len(self.question_set):
+            self.current_index = index
+            return True
+        return False
 
     def is_finished(self):
         return self.finished
 
     def get_progress(self):
+        total = len(self.question_set)
+        answered = len(self.responses)
+        percent = round(answered / total * 100) if total > 0 else 0
         return {
-            "answered": len(self.responses),
-            "total": len(self.question_set),
-            "percent": round(len(self.responses) / len(self.question_set) * 100)
+            "answered": answered,
+            "total": total,
+            "percent": percent
         }
 
     def get_topic_progress(self):
