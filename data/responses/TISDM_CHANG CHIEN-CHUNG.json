@@ -9,34 +9,6 @@
       "user_response": "1-10人",
       "question_type": "single",
       "topic": "邊界設定與組織資訊"
-    },
-    {
-      "question_id": "B002",
-      "question_text": "餐廳的碳盤查範圍包含哪些部分？",
-      "user_response": [],
-      "question_type": "multiple",
-      "topic": "邊界設定與組織資訊"
-    },
-    {
-      "question_id": "B004",
-      "question_text": "有專門負責環保或永續管理的人員嗎？",
-      "user_response": "沒有專職人員",
-      "question_type": "single",
-      "topic": "邊界設定與組織資訊"
-    },
-    {
-      "question_id": "B004",
-      "question_text": "有專門負責環保或永續管理的人員嗎？",
-      "user_response": "沒有專職人員",
-      "question_type": "single",
-      "topic": "邊界設定與組織資訊"
-    },
-    {
-      "question_id": "B009",
-      "question_text": "餐廳過去是否有碳盤查或永續訓練？",
-      "user_response": "沒有經驗",
-      "question_type": "single",
-      "topic": "邊界設定與組織資訊"
     }
   ]
 }

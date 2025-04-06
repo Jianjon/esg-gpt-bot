@@ -5,20 +5,9 @@
   "responses": [
     {
       "question_id": "B001",
-      "question_text": "公司規模如何？（員工數、車隊規模、營運據點數量）",
-      "user_response": "1-10人",
+      "question_text": "公司規模如何？（員工數、廠區數量，單一/多點營運？）",
+      "user_response": "11-50人",
       "question_type": "single",
-      "topic": "邊界設定與組織資訊"
-    },
-    {
-      "question_id": "B002",
-      "question_text": "盤查範圍包含哪些運輸與倉儲環節？",
-      "user_response": [
-        "特定運輸類別（陸運/空運/海運）",
-        "供應鏈物流碳足跡",
-        "不知道/不確定"
-      ],
-      "question_type": "multiple",
       "topic": "邊界設定與組織資訊"
     }
   ]

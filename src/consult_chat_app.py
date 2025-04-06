@@ -97,75 +97,42 @@ if current_q:
     )
     st.markdown(f"<div class='ai-message'>{gpt_text}</div>", unsafe_allow_html=True)
 
-    # 使用者輸入框
-    user_input = st.text_input("你的回覆：", key=f"input_{session.current_index}")
-    if user_input:
-        st.markdown(f"<div class='user-message'>{user_input}</div>", unsafe_allow_html=True)
-        session.save_answer(user_input)
+    # === GPT 對話式問答區塊 ===
+    st.divider()
+    st.markdown("### 🤖 問題機器人（針對本題進行延伸提問）")
 
-        # 記錄對話到 context_tracker
-        context_tracker.add_turn(current_q["id"], user_input, "（AI 回覆待生成）")
+    # 初始化 context_tracker 的 chat 記憶
+    if "qa_threads" not in st.session_state:
+        st.session_state.qa_threads = {}
 
-        # 自動儲存進度
-        save_to_json(session)
+    from sessions.context_tracker import get_conversation, add_turn
+    from src.utils.gpt_tools import call_gpt  # 你原本自定義的 GPT 呼叫函式
 
-        # 下一題按鈕
-        if st.button("👉 下一題"):
-            # 自動摘要
-            summary = context_tracker.update(current_q["id"], user_input)
+    chat_id = current_q["id"]
+    history = get_conversation(chat_id)
 
-            # 下一題
-            session.advance()
-            st.experimental_rerun()
-else:
-    st.success("問卷已完成！請點選下方按鈕產出診斷摘要報告。")
-    if st.button("產出報告"):
-        report = generate_basic_report(session.get_answers(), context_tracker.get_all_summaries())
-        st.text_area("診斷報告：", report, height=400)
+    # 顯示對話紀錄（上半部）
+    for msg in history:
+        with st.chat_message("user"):
+            st.markdown(msg["user"])
+        with st.chat_message("assistant"):
+            st.markdown(msg["gpt"])
 
-# ====== 引導式自由問答（進階支援）======
-st.markdown("---")
-st.subheader("需要幫助嗎？與顧問聊聊：")
+    # 加上 follow-up 提示（建議提問方向）
+    st.markdown("##### 💡 提問建議")
+    st.info(current_q.get("follow_up", "目前尚無提示，您可自由發問"))
 
-from pathlib import Path
-vector_path = Path("data/vector_output")
-guided_rag = GuidedRAG(vector_path=vector_path)
+    # 下半部輸入區
+    if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 專家 AI"):
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
+        with st.chat_message("assistant"):
+            with st.spinner("AI 回覆中..."):
+                try:
+                    gpt_reply = call_gpt(prompt, current_q["text"], current_q.get("learning_goal", ""))
+                    st.markdown(gpt_reply)
+                    add_turn(chat_id, prompt, gpt_reply)
+                except Exception as e:
+                    st.error(f"⚠️ AI 回覆失敗：{str(e)}")
 
-if 'guided_chat' not in st.session_state:
-    st.session_state['guided_chat'] = []
-if 'guided_turns' not in st.session_state:
-    st.session_state['guided_turns'] = 0
-
-user_question = st.text_input("輸入你對此題的疑問，或直接輸入『不知道』：", key=f"help_{session.current_index}")
-
-if user_question:
-    st.session_state['guided_turns'] += 1
-    st.session_state['guided_chat'].append(("user", user_question))
-
-    ai_reply, related_chunks = guided_rag.ask(
-        user_question,
-        history=st.session_state['guided_chat'],
-        turn=st.session_state['guided_turns']
-    )
-
-    st.markdown(f"<div class='ai-message'>{ai_reply}</div>", unsafe_allow_html=True)
-    st.session_state['guided_chat'].append(("assistant", ai_reply))
-
-    # 記錄對話到 context_tracker
-    context_tracker.add_turn(current_q["id"], user_question, ai_reply)
-
-    with st.expander("參考資料段落"):
-        for chunk in related_chunks:
-            st.markdown(f"**{chunk['source']}** - 第 {chunk['page']} 頁")
-            st.markdown(f"> {chunk['text'][:300]}...\n")
-
-    if st.session_state['guided_turns'] >= 3:
-        st.info("這題若仍無法判斷，我們可以先進入下一題。")
-        if st.button("跳過此題"):
-            session.save_answer("（未回答）")
-            context_tracker.update(current_q['id'], "未回答（由引導系統記錄）")
-            session.advance()
-            st.session_state['guided_turns'] = 0
-            st.session_state['guided_chat'] = []
-            st.experimental_rerun()
