@@ -6,81 +6,53 @@ body {
     background-color: #ffffff;
 }
 
-/* ========= 主容器調整：內容集中，整體上移 ========= */
+/* ========= 主容器內容區：集中與留白 ========= */
 section.main > div.block-container {
     max-width: 960px;
     margin: 0 auto;
-    padding-top: 1rem;
-    padding-bottom: 120px; /* 預留 chat 輸入欄空間 */
+    padding-top: 64px !important;
+    padding-bottom: 120px;
+    height: calc(100vh - 180px);
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
-/* ========= 對話訊息區塊 ========= */
-.user-message {
-    background-color: #e6f0ff;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    align-self: flex-end;
-    max-width: 80%;
-}
-
-.ai-message {
-    background-color: #f0f0f0;
-    border-left: 4px solid #4caf50;
-    padding: 10px;
-    margin-bottom: 10px;
-    font-size: 16px;
-    max-width: 80%;
-}
-
-/* ========= 題目說明與選項區塊 ========= */
-.question-section {
-    margin-bottom: 1.5rem;
-    padding: 0.5rem 1rem;
-    line-height: 1.6;
-}
-
-.option-block {
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-    padding-left: 1rem;
-    font-size: 15px;
-    color: #444;
-}
-
-/* ========= GPT 風格輸入欄固定底部 ========= */
-.chat-input-area {
+/* ========= Topbar 固定樣式 ========= */
+.topbar {
     position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 960px;
-    padding: 10px 20px;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
     background-color: #ffffff;
-    border-top: 1px solid #ddd;
-    z-index: 50;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    z-index: 100;
 }
 
-/* 輸入欄與送出按鈕 */
-.chat-input-area input {
-    width: 80%;
-    padding: 10px;
-    font-size: 15px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+.topbar .logo {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+}
+
+.topbar .logo::before {
+    content: "🌱";
     margin-right: 8px;
 }
 
-.chat-input-area button {
-    padding: 10px 16px;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+.topbar .user-info {
+    font-size: 14px;
+    color: #666;
+    text-transform: uppercase;
 }
 
-/* ========= 題目標題區（吸附頂部） ========= */
+/* ========= 主題區與題目區塊 ========= */
 .fixed-question {
     position: sticky;
     top: 0;
@@ -93,20 +65,100 @@ section.main > div.block-container {
     color: #333;
 }
 
-/* ========= Sidebar 樣式 ========= */
-.sidebar .css-1v3fvcr {
-    font-size: 22px;
-    font-weight: bold;
-    color: #333;
+.main-question-block {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.05);
+    min-height: 420px;
+    margin-bottom: 16px;
 }
 
-.sidebar .css-1v3fvcr small {
-    font-size: 18px;
-    font-weight: normal;
-    color: #5f6368;
+/* ========= ChatGPT 風格輸入欄 ========= */
+.chat-input-area {
+    position: relative;
+    margin-top: 16px;
 }
 
-/* GPT 風格子題目列表（非按鈕） */
+.chat-input-area textarea {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    resize: vertical;
+    min-height: 80px;
+    max-height: 160px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+/* ✅ 替換掉預設藍色樣式的送出按鈕 */
+.submit-button {
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
+    background-color: transparent;
+    color: #4caf50; /* 綠色文字或 icon */
+    padding: 6px 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.submit-button:hover {
+    background-color: #f2f2f2;
+}
+
+
+.submit-button {
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
+    background-color: transparent !important; /* 一開始就透明 */
+    color: #4caf50;
+    padding: 6px 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.submit-button:hover {
+    background-color: transparent !important; /* 滑鼠移過去也透明 */
+    box-shadow: none;
+}
+
+
+
+/* ========= 上一題／下一題按鈕 ========= */
+.nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.nav-buttons button {
+    width: 120px;
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 6px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.nav-buttons button:hover {
+    background-color: #45a049;
+}
+
+/* ========= Sidebar 題目列表 ========= */
 .sidebar .question-item {
     padding: 6px 10px;
     font-size: 15px;
@@ -123,10 +175,11 @@ section.main > div.block-container {
 }
 
 .sidebar .question-item:hover {
-    background-color: #f7f7f7;
+    background-color: #eaf6f6;
+    color: #007b8a;
+    font-weight: 500;
 }
 
-/* 題目已完成勾選符號 */
 .sidebar .question-item.completed::after {
     content: "✔";
     color: #4caf50;
@@ -134,29 +187,6 @@ section.main > div.block-container {
     margin-left: 8px;
 }
 
-/* ========= 按鈕樣式 ========= */
-button, .stButton > button {
-    background-color: #ffffff;
-    color: #333;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 15px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-button:hover, .stButton > button:hover {
-    background-color: #f2f2f2;
-}
-
-/* Streamlit 特定按鈕強化 */
-button.stButton {
-    background-color: #0084ff;
-    color: white;
-    border-radius: 5px;
-}
-
-button.stButton:hover {
-    background-color: #0066cc;
-}
+/* ========= 清除不用樣式區 ========= */
+/* 已移除：.floating-input, .submit-button, .chat-row, .chat-submit */
+/* 已移除：button.stButton, .submit-btn, .chat-nav 等不使用樣式 */

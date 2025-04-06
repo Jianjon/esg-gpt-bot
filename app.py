@@ -1,47 +1,149 @@
 import streamlit as st
-st.set_page_config(page_title="ESG 問卷診斷", layout="wide")
+st.set_page_config(page_title="ESG 問卷評斷", layout="centered")
 
-# _init_app 將會統一處理環境設定與 sys.path
+# _init_app 總體處理環境設定與 sys.path
 import _init_app
 
-# 套用自定義樣式（統一在 CSS 控管，確保 block-container 與 chat-input-area 正確）
+# 套用自定義 CSS 樣式
 with open("assets/custom_style.css", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# 如果尚未填 welcome 表單，先顯示 welcome 畫面
+# 顯示 Topbar
+st.markdown("""
+    <style>
+        div[data-testid="stAppViewContainer"] > .main {{
+            padding-top: 64px;
+        }}
+    </style>
+    <div class="topbar">
+        <div class="logo">🌱 ESG Service Path</div>
+        <div class="user-info">{}</div>
+    </div>
+""".format(st.session_state.get("user_name", "未登入").upper()), unsafe_allow_html=True)
+
+# 檢查是否須先顯示 welcome 页面
 if "user_name" not in st.session_state or "industry" not in st.session_state:
     from welcome import show_welcome
     show_welcome()
     st.stop()
+
+from collections import defaultdict
+from pathlib import Path
+import pandas as pd
+import os
+import json
+import matplotlib.pyplot as plt
+import faiss
+import fitz
+import re
+from typing import List, Dict, Tuple
 
 from sessions.answer_session import AnswerSession
 from sessions.context_tracker import add_context_entry, get_all_summaries
 from managers.baseline_manager import BaselineManager
 from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
-from loaders.question_loader import load_questions, STAGE_MAP
 from session_logger import save_to_json, load_from_json, save_to_sqlite
-from constants.section_map import MANUAL_SECTION_QUESTIONS
-import matplotlib.pyplot as plt
-import json
-from pathlib import Path
+from vector_builder.pdf_processor import PDFProcessor
+from vector_builder.metadata_handler import MetadataHandler
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import faiss
-import fitz  # PyMuPDF
-from typing import List, Dict, Tuple
-import re
-from src.vector_builder.pdf_processor import PDFProcessor, MetadataHandler
 
-# --- 環境設定 ---
-st.set_page_config(page_title="ESG 問卷診斷", layout="wide")
-st.title("📋 ESG 智能問卷診斷 | 淨零小幫手")
+MODULE_MAP = {
+    "C": "ESG 教學導入（教學前導）",
+    "B": "邊界設定與組織資訊",
+    "S": "排放源辨識與確認",
+    "D": "數據收集方式與能力",
+    "M": "內部管理與SOP現況",
+    "R": "報告需求與後續行動"
+}
 
-# --- 基本驗證 ---
-if "user_name" not in st.session_state or "industry" not in st.session_state:
-    st.warning("請先從 welcome.py 進入並填寫基本資訊。")
-    st.stop()
+INDUSTRY_FILE_MAP = {
+    "餐飲業": "Restaurant.csv",
+    "旅宿業": "Hotel.csv",
+    "零售業": "Retail.csv",
+    "小型製造業": "SmallManufacturing.csv",
+    "物流業": "Logistics.csv",
+    "辦公室服務業": "Offices.csv"
+}
 
+STAGE_MAP = {
+    "basic": "beginner",
+    "advanced": "intermediate"
+}
+
+TOPIC_ORDER = [
+    "ESG 教學導入（教學前導）",
+    "邊界設定與組織資訊",
+    "排放源辨識與確認",
+    "數據收集方式與能力",
+    "內部管理與SOP現況",
+    "報告需求與後續行動"
+]
+
+def load_questions(industry: str, stage: str = "basic", skip_common: bool = False) -> list:
+    filename = INDUSTRY_FILE_MAP.get(industry)
+    if not filename:
+        raise ValueError(f"找不到產業對應的題庫：{industry}")
+    path = os.path.join("data", filename)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"找不到題庫檔案：{path}")
+
+    df = pd.read_csv(path)
+    required_cols = ["question_id", "question_text", "difficulty_level", "option_type", "answer_tags"]
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"題庫缺少必要欄位：{col}")
+
+    if stage not in STAGE_MAP:
+        raise ValueError(f"輸入值錯誤：stage 應為 basic 或 advanced，但收到：{stage}")
+    mapped_stage = STAGE_MAP[stage]
+    df = df[df["difficulty_level"].isin([mapped_stage] if stage == "basic" else ["beginner", "intermediate"])]
+
+    questions = []
+    for _, row in df.iterrows():
+        qid = row["question_id"]
+        topic = row.get("topic_category", "").strip() or MODULE_MAP.get(qid[0], "未分類")
+        options, option_notes = [], {}
+        for opt in ["A", "B", "C", "D", "E"]:
+            val = row.get(f"option_{opt}")
+            if pd.notna(val):
+                options.append(val)
+                option_notes[val] = row.get(f"option_{opt}_note", "")
+
+        questions.append({
+            "id": qid,
+            "industry": row.get("industry_type", industry),
+            "text": row.get("question_text", "未填題目內容"),
+            "options": options,
+            "option_notes": option_notes,
+            "type": row.get("option_type", "single"),
+            "topic": topic,
+            "difficulty": row.get("difficulty_level", mapped_stage),
+            "report_section": row.get("report_section", ""),
+            "tags": row.get("answer_tags", "").split("|") if isinstance(row.get("answer_tags"), str) else [],
+            "allow_custom_answer": row.get("allow_custom_answer", False),
+            "allow_skip": row.get("allow_skip", False),
+            "note": row.get("free_answer_note", ""),
+            "question_note": row.get("question_note", ""),
+            "learning_objective": row.get("learning_objective", ""),
+            "report_topic": row.get("report_topic", ""),
+            "learning_goal": row.get("learning_goal", ""),
+            "follow_up": row.get("follow_up", "")
+        })
+
+    if skip_common:
+        questions = [q for q in questions if not (q["id"].startswith("C0"))]
+
+    def question_sort_key(q):
+        topic_index = TOPIC_ORDER.index(q["topic"]) if q["topic"] in TOPIC_ORDER else 999
+        qid = q["id"]
+        num_part = int(qid[1:]) if qid[1:].isdigit() else 999
+        return (topic_index, num_part)
+
+    return sorted(questions, key=question_sort_key)
+
+# ===== 初始化設定 =====
 if "stage" not in st.session_state:
     st.session_state.stage = "basic"
 if "jump_to" not in st.session_state:
@@ -53,7 +155,7 @@ current_stage = st.session_state.stage
 questions = load_questions(
     industry=st.session_state.industry,
     stage=current_stage,
-    skip_common=True  # ✅ 不載入常識題（C 題）
+    skip_common=True
 )
 
 if "session" not in st.session_state:
@@ -70,7 +172,7 @@ if "session" not in st.session_state:
                     st.session_state.session = session
                     st.rerun()
                 else:
-                    st.warning("偵測到您有未完成的問卷記錄，您可以選擇繼續或重新開始。")
+                    st.warning("偵測到您有未完成的問卷紀錄，您可以選擇繼續或重新開始。")
                     st.stop()
     else:
         st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
@@ -78,8 +180,18 @@ if "session" not in st.session_state:
 session = st.session_state.session
 current_q = session.get_current_question()
 
+# ===== 啟用 jump_to 跳題 =====
+if st.session_state.get("jump_to"):
+    qid = st.session_state["jump_to"]
+    index = next((i for i, item in enumerate(session.question_set) if item["id"] == qid), None)
+    if index is not None:
+        session.jump_to(index)
+        st.session_state["jump_to"] = None
+        st.rerun()
+
+# ===== 側邊列重構（使用 question_set） =====
 with st.sidebar:
-    st.title("📋 ESG 智能問卷診斷 | 淨零小幫手")
+    st.title("📋 ESG 智能問卷診斶 | 淨零小幫手")
     st.markdown("---")
     st.header("👤 使用者資訊")
     st.markdown(f"**姓名：** {st.session_state.user_name}")
@@ -91,38 +203,33 @@ with st.sidebar:
     current_topic = current_q.get("topic") if current_q else None
     answered_ids = {r["question_id"] for r in session.responses}
 
-    for section, questions in MANUAL_SECTION_QUESTIONS.items():
-        filtered_questions = [
-            q for q in questions
-            if (
-                (current_stage == "basic" and q["difficulty"] == STAGE_MAP["basic"] and not q["id"].startswith("C"))
-                or (current_stage == "advanced" and q["difficulty"] in [STAGE_MAP["basic"], STAGE_MAP["advanced"]])
-            )
-        ]
+    questions_by_topic = defaultdict(list)
+    for q in session.question_set:
+        topic = q.get("topic", "未分類")
+        questions_by_topic[topic].append(q)
 
-        total = len(filtered_questions)
-        answered = sum(1 for q in filtered_questions if q["id"] in answered_ids)
+    for topic, q_list in questions_by_topic.items():
+        total = len(q_list)
+        answered = sum(1 for q in q_list if q["id"] in answered_ids)
         checked = "✅ " if answered == total else ""
-        expanded = section == current_topic
+        expanded = topic == current_topic
 
-        with st.expander(f"{checked}{section}", expanded=expanded):
-            for idx, q in enumerate(filtered_questions, 1):
+        with st.expander(f"{checked}{topic}", expanded=expanded):
+            for idx, q in enumerate(q_list, 1):
                 is_done = q["id"] in answered_ids
-                css_class = "question-item completed" if is_done else "question-item"
-                st.markdown(
-                    f"<div class=\"{css_class}\" onclick=\"window.location.href='#{q['id']}'\">{idx}. {q['title']}</div>",
-                    unsafe_allow_html=True
-                )
-                if st.session_state.get("jump_to") == q["id"]:
-                    index = next((i for i, item in enumerate(session.question_set) if item["id"] == q["id"]), None)
-                    if index is not None:
-                        session.jump_to(index)
-                        st.session_state["jump_to"] = None
-                        st.rerun()
-                st.markdown(f"<a name='{q['id']}'></a>", unsafe_allow_html=True)
+                label = f"{idx}. {q.get('text', '')[:15]}..."
+                if is_done:
+                    label += " ✔"
 
-progress = session.get_progress()
+                key = f"jump_to_{q['id']}"
+                if st.button(label, key=key):
+                    st.session_state["jump_to"] = q["id"]
+                    st.rerun()
 
+# 固定主體容器
+st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
+
+# 主體內容：問題主體、說明與選項
 if current_q:
     st.markdown(f"#### 🎯 學習主題：<br>{current_q.get('learning_goal', '')}", unsafe_allow_html=True)
     st.markdown("---")
@@ -134,30 +241,77 @@ if current_q:
     labeled_options = [f"{opt}：{option_notes.get(opt, '')}" for opt in options]
 
     selected = []
+
     if current_q["type"] == "single":
         selected_option = st.radio("可選擇：", labeled_options)
         if selected_option:
             selected = [selected_option.split("：")[0]]
     else:
-        selected_options = st.multiselect("可複選：", labeled_options)
-        selected = [opt.split("：")[0] for opt in selected_options]
+        st.markdown("可複選：")
+        for opt in labeled_options:
+            opt_key = opt.split("：")[0]
+            if st.checkbox(opt, key=opt_key):
+                selected.append(opt_key)
 
-    st.markdown('<div class="chat-input-area">', unsafe_allow_html=True)
-    col1, col2 = st.columns([5, 1])
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 浮動輸入框與提交按鈕
+    st.markdown("""
+        <style>
+        .floating-input {
+            position: relative;
+            margin-top: 1.5rem;
+        }
+        .floating-input textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            resize: vertical;
+            min-height: 80px;
+        }
+        .submit-button {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background-color: #0f62fe;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+        }
+        </style>
+        <div class="floating-input">
+            <textarea placeholder="💬 若有想法或要問 AI，可先輸入再提交..."></textarea>
+            <button class="submit-button">✅</button>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 導航按鈕區塊
+    col1, col2 = st.columns([1, 1])
     with col1:
-        user_comment = st.text_input("💬 若有想法或要問 AI，可先輸入再提交：", label_visibility="collapsed")
+        if st.button("👈 上一題", key="btn_prev", use_container_width=True):
+            session.go_back()
+            st.rerun()
     with col2:
-        if st.button("✅"):
-            result = session.submit_response(selected)
+        if st.button("👉 下一題", key="btn_next", use_container_width=True):
+            # 根據題型處理答案格式
+            if current_q["type"] == "single":
+                answer_payload = selected[0] if selected else ""
+            else:
+                answer_payload = selected
+
+            # 提交答案
+            result = session.submit_response(answer_payload)
             add_context_entry(current_q["id"], selected, current_q["text"])
             save_to_json(session)
             if "error" in result:
                 st.error(result["error"])
             else:
                 st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 
-else:
+else:  # 確保這裡的 else 與上方 if 對齊
     st.success("🎉 您已完成本階段問卷！")
     baseline = BaselineManager("data/baselines/company_abc.json").get_baseline()
     summary = session.get_summary(company_baseline=baseline)
