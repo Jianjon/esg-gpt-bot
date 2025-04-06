@@ -1,10 +1,37 @@
 import streamlit as st
+
+# 🧱 Step 1：設定頁面（一定要是第一個 Streamlit 指令）
 st.set_page_config(page_title="ESG 問卷評斷", layout="centered")
 
-# _init_app 總體處理環境設定與 sys.path
-import _init_app
+# 🧠 Step 2：初始化所有 session_state 欄位（✅ 這段你寫得很好）
+if "qa_threads" not in st.session_state:
+    st.session_state.qa_threads = {}
 
-# 套用自定義 CSS 樣式
+if "context_history" not in st.session_state:
+    st.session_state.context_history = []
+
+if "guided_chat" not in st.session_state:
+    st.session_state.guided_chat = []
+
+if "guided_turns" not in st.session_state:
+    st.session_state.guided_turns = 0
+
+# 🧩 Step 3：先定義會用到的小工具函數（你寫的 get_conversation 與 add_turn 就放這邊）
+from typing import List, Dict
+
+def get_conversation(question_id: str) -> List[Dict[str, str]]:
+    return st.session_state.qa_threads.get(question_id, [])
+
+def add_turn(question_id: str, user_input: str, assistant_reply: str):
+    if question_id not in st.session_state.qa_threads:
+        st.session_state.qa_threads[question_id] = []
+    st.session_state.qa_threads[question_id].append({
+        "user": user_input,
+        "assistant": assistant_reply
+    })
+
+# 🏗️ Step 4：其他系統初始化，例如 _init_app、CSS 載入
+import _init_app
 with open("assets/custom_style.css", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
@@ -27,6 +54,11 @@ if "user_name" not in st.session_state or "industry" not in st.session_state:
     show_welcome()
     st.stop()
 
+# 檢查是否已完成基本資訊填寫
+if "welcome_submitted" not in st.session_state or not st.session_state["welcome_submitted"]:
+    st.warning("請先完成產業選擇與公司基本資料填寫。")
+    st.stop()
+
 from collections import defaultdict
 from pathlib import Path
 import pandas as pd
@@ -38,16 +70,31 @@ import fitz
 import re
 from typing import List, Dict, Tuple
 
-from sessions.answer_session import AnswerSession
-from sessions.context_tracker import add_context_entry, get_all_summaries
-from managers.baseline_manager import BaselineManager
-from managers.report_manager import ReportManager
-from managers.feedback_manager import FeedbackManager
-from session_logger import save_to_json, load_from_json, save_to_sqlite
-from vector_builder.pdf_processor import PDFProcessor
-from vector_builder.metadata_handler import MetadataHandler
+# --- Session 管理 ---
+from src.sessions.answer_session import AnswerSession
+from src.sessions.context_tracker import add_context_entry
+from src.session_logger import save_to_json, load_from_json, save_to_sqlite
+
+# --- GPT 與提示模組 ---
+from src.managers.gpt_rewrite import rewrite_question_to_conversational
+from src.utils.gpt_tools import call_gpt
+from src.question_router import recommend_next_question
+
+# --- 分析報告與建議 ---
+from src.managers.baseline_manager import BaselineManager
+from src.managers.report_manager import ReportManager
+from src.managers.feedback_manager import FeedbackManager
+
+# --- 向量處理（PDF 建檔用） ---
+# from src.vector_builder.pdf_processor import PDFProcessor
+# from src.vector_builder.metadata_handler import MetadataHandler
+
+
+# --- 向量嵌入與分段工具 ---
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+from src.utils.gpt_tools import call_gpt
 
 MODULE_MAP = {
     "C": "ESG 教學導入（教學前導）",
@@ -226,8 +273,23 @@ with st.sidebar:
                     st.session_state["jump_to"] = q["id"]
                     st.rerun()
 
+# 匯入進度圖相關模組
+from src.utils.topic_progress import get_topic_progress
+
+# 計算已回答的題目 ID
+answered_ids = {r["question_id"] for r in session.responses}
+
+# 生成進度圖
+fig = get_topic_progress(session.question_set, answered_ids)
+
+# 在側邊欄顯示進度圖
+st.sidebar.pyplot(fig)
+
 # 固定主體容器
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
+
+# 匯入 context_tracker
+from src.sessions import context_tracker
 
 # 主體內容：問題主體、說明與選項
 if current_q:
@@ -236,6 +298,7 @@ if current_q:
     st.markdown(f"<h3>{current_q.get('text', '')}</h3>", unsafe_allow_html=True)
     st.markdown(f"**題目說明：** {current_q.get('question_note', '')}")
 
+    # ===== 顯示選項 =====
     options = current_q["options"]
     option_notes = current_q.get("option_notes", {})
     labeled_options = [f"{opt}：{option_notes.get(opt, '')}" for opt in options]
@@ -252,43 +315,47 @@ if current_q:
             opt_key = opt.split("：")[0]
             if st.checkbox(opt, key=opt_key):
                 selected.append(opt_key)
+    st.markdown("---")
+
+    # --- AI 對話提示語區塊（顯示 follow_up，引導使用者提問） ---
+    if current_q.get("follow_up"):
+        ai_hint = f"💡 顧問提醒：{current_q['follow_up']} 若您對此有疑問，可在下方輸入。"
+    else:
+        ai_hint = "💡 您可以在下方輸入任何想法或問題，AI 將提供協助。"
+
+    st.markdown(f"<div class='ai-message'>{ai_hint}</div>", unsafe_allow_html=True)
+
+    # ===== 顯示過去對話紀錄 =====
+    history = context_tracker.get_conversation(current_q["id"])
+    for turn in history:
+        st.markdown(f"<div class='user-message'>🧑 {turn['user']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='ai-message'>🤖 {turn['assistant']}</div>", unsafe_allow_html=True)
+
+    # ===== 使用者輸入框與提交按鈕 =====
+    user_input = st.text_area("💬 若有想法或問題，請輸入並提交：", placeholder="輸入您的問題或想法...", height=80)
+    submit_button = st.button("提交問題")
+
+    if submit_button and user_input.strip():
+        # ⛳ 根據題目內容與 follow_up 自動組 prompt
+        follow_up = current_q.get("follow_up", "")
+        full_prompt = f"{follow_up}\n\n使用者提問：{user_input}" if follow_up else user_input
+
+        # 呼叫 GPT 模型（使用 consult_chat_app 中的邏輯）
+        from src.consult_chat_app import call_gpt
+        gpt_reply = call_gpt(full_prompt)
+
+        # 儲存到對話紀錄
+        context_tracker.add_turn(current_q["id"], user_input, gpt_reply)
+
+        # 立即顯示新的回答
+        st.markdown(f"<div class='user-message'>🧑 {user_input}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='ai-message'>🤖 {gpt_reply}</div>", unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 浮動輸入框與提交按鈕
-    st.markdown("""
-        <style>
-        .floating-input {
-            position: relative;
-            margin-top: 1.5rem;
-        }
-        .floating-input textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border-radius: 8px;
-            resize: vertical;
-            min-height: 80px;
-        }
-        .submit-button {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            background-color: #0f62fe;
-            color: white;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-            border: none;
-        }
-        </style>
-        <div class="floating-input">
-            <textarea placeholder="💬 若有想法或要問 AI，可先輸入再提交..."></textarea>
-            <button class="submit-button">✅</button>
-        </div>
-    """, unsafe_allow_html=True)
 
-    # 導航按鈕區塊
+
+    # ===== 導航按鈕區塊 =====
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("👈 上一題", key="btn_prev", use_container_width=True):
@@ -306,10 +373,22 @@ if current_q:
             result = session.submit_response(answer_payload)
             add_context_entry(current_q["id"], selected, current_q["text"])
             save_to_json(session)
+
             if "error" in result:
                 st.error(result["error"])
             else:
+                # 🧠 加入 GPT 的行動建議摘要
+                from src.sessions import context_tracker  # 若上面已有就不需重複 import
+                action = context_tracker.generate_following_action(current_q["id"])
+                if action:
+                    st.session_state.context_history.append({
+                        "id": current_q["id"],
+                        "summary": action
+                    })
+
+                # 換下一題
                 st.rerun()
+
 
 else:  # 確保這裡的 else 與上方 if 對齊
     st.success("🎉 您已完成本階段問卷！")

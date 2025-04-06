@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict
 from openai import ChatCompletion
-from src.retriever.vector_guard import VectorStore
+from src.utils.vector_guard import VectorStore
 
 class GuidedRAG:
     def __init__(self, vector_path: str, model: str = "gpt-4o"):

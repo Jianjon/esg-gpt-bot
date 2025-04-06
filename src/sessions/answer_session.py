@@ -42,6 +42,19 @@ class AnswerSession:
             return True
         return False
 
+    def go_back(self):
+        """回到上一題"""
+        if self.current_index > 0:
+            self.current_index -= 1
+
+
+    def has_next(self):
+        return self.current_index + 1 < len(self.question_set)
+
+    def next(self):
+        if self.has_next():
+            self.current_index += 1
+
     def is_finished(self):
         return self.finished
 

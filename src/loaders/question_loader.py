@@ -1,9 +1,9 @@
 import pandas as pd
 import os
+from typing import List
 
 # 題號開頭對應主題分類
 MODULE_MAP = {
-    "C": "ESG 教學導入（教學前導）",
     "B": "邊界設定與組織資訊",
     "S": "排放源辨識與確認",
     "D": "數據收集方式與能力",
@@ -18,7 +18,8 @@ INDUSTRY_FILE_MAP = {
     "零售業": "Retail.csv",
     "小型製造業": "SmallManufacturing.csv",
     "物流業": "Logistics.csv",
-    "辦公室服務業": "Offices.csv"
+    "辦公室服務業": "Offices.csv",
+    # 可新增其他產業
 }
 
 # 對應難度階段
@@ -107,3 +108,24 @@ def load_questions(industry: str, stage: str = "basic", skip_common: bool = Fals
     questions.sort(key=question_sort_key)
 
     return questions
+
+def load_all_question_data() -> List[dict]:
+    """
+    從多個 CSV 檔案載入所有產業的題目資料，並整合為一個列表。
+    """
+    all_questions = []
+    for industry, filename in INDUSTRY_FILE_MAP.items():
+        path = os.path.join("data", filename)
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            for _, row in df.iterrows():
+                all_questions.append({
+                    "question_id": row["question_id"],
+                    "industry_type": row.get("industry_type", industry),
+                    "question_text": row.get("question_text", ""),
+                    "topic_category": row.get("topic_category", ""),
+                    "difficulty_level": row.get("difficulty_level", ""),
+                    "report_section": row.get("report_section", ""),
+                    # 可再加其他欄位
+                })
+    return all_questions

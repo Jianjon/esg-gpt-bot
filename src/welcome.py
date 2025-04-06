@@ -43,17 +43,21 @@ def show_welcome():
             if not name or not company:
                 st.warning("請填寫姓名與公司名稱後再開始診斷。")
             else:
+                # 儲存使用者基本資訊到 session_state
                 st.session_state.user_name = name
                 st.session_state.user_email = email
                 st.session_state.company_name = company
                 st.session_state.industry = industry
                 st.session_state.stage = stage
                 st.session_state.reset_data = reset_data
+                st.session_state.welcome_submitted = True  # ✅ 新增這行，標記已完成基本資訊填寫
 
+                # 清除原有紀錄（如果選擇重置）
                 session_file = os.path.join("data/sessions", f"{company}_{name}.json")
                 if reset_data and os.path.exists(session_file):
                     os.remove(session_file)
                     st.toast("✅ 已清除原有紀錄，問卷將從頭開始。")
 
+                # 成功提示並重新載入頁面
                 st.success("✅ 基本資訊完成，正在進入問卷頁面...")
                 st.rerun()
