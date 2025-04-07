@@ -49,6 +49,7 @@ from vector_builder.pdf_processor import PDFProcessor
 from vector_builder.metadata_handler import MetadataHandler
 from langchain_openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from src.components.suggest_box import render_suggested_questions
 
 MODULE_MAP = {
     "C": "ESG 教學導入（教學前導）",
@@ -192,7 +193,7 @@ if st.session_state.get("jump_to"):
 
 # ===== 側邊列重構（使用 question_set） =====
 with st.sidebar:
-    st.title("📋 ESG 智能問卷診斶 | 淨零小幫手")
+    st.title("📋 ESG Service Path | 淨零小幫手")
     st.markdown("---")
     st.header("👤 使用者資訊")
     st.markdown(f"**姓名：** {st.session_state.user_name}")
@@ -312,6 +313,35 @@ if current_q:
     # 提問建議
     st.markdown("##### 💡 提問建議")
     st.info(current_q.get("follow_up", "目前尚無提示，您可自由發問"))
+
+    # 建議題目列表（之後也可用 current_q["follow_up"] 自動帶入）
+    suggested_prompts = [
+        "餐廳的規模是否影響碳盤查責任邊界？",
+        "中央廚房或物流要納入碳盤查嗎？"
+    ]
+
+    # 定義點按按鈕後自動送出的處理流程
+    def auto_submit_prompt(selected_prompt):
+        from src.utils.gpt_tools import call_gpt
+        from sessions.context_tracker import add_turn, get_conversation
+
+        with st.chat_message("user"):
+            st.markdown(selected_prompt)
+        with st.chat_message("assistant"):
+            with st.spinner("AI 回覆中..."):
+                context_text = f"{current_q['text']}\n{current_q.get('learning_goal', '')}"
+                reply = call_gpt(
+                    selected_prompt,
+                    context=context_text,
+                    chat_history=get_conversation(current_q["id"])
+                )
+                st.markdown(reply)
+                add_turn(current_q["id"], selected_prompt, reply)
+
+    # 🔵 在 chat_input 上方插入建議問題按鈕區
+    render_suggested_questions(suggested_prompts, auto_submit_prompt)
+
+
 
     # 下方輸入框
     if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 顧問 AI"):

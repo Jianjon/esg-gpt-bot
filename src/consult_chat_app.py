@@ -11,6 +11,7 @@ from session_logger import save_to_json
 import openai
 import os
 from dotenv import load_dotenv
+from src.components.suggest_box import render_suggested_questions
 
 # 載入環境變數
 load_dotenv()
@@ -83,52 +84,56 @@ if current_q:
         st.session_state.qa_threads = {}
 
     from sessions.context_tracker import get_conversation, add_turn
-    from src.utils.gpt_tools import call_gpt  # 你原本自定義的 GPT 呼叫函式
+    from src.utils.gpt_tools import call_gpt
 
     chat_id = current_q["id"]
     history = get_conversation(chat_id)
 
-    # 顯示對話紀錄（上半部）
-    for msg in history:
-        with st.chat_message("user"):
-            st.markdown(msg["user"])
-        with st.chat_message("assistant"):
-            st.markdown(msg["gpt"])
-
-    # 加上 follow-up 提示（建議提問方向）
-    st.markdown("##### 💡 提問建議")
-    st.info(current_q.get("follow_up", "目前尚無提示，您可自由發問"))
-
-# 設定每題最多對話輪數
-MAX_TURNS = 5
-if len(history) >= MAX_TURNS:
-    st.warning("您已針對本題進行了多輪提問，建議前往下一題以持續學習 😊")
-    if st.button("👉 前往下一題"):
-        session.next()
+    # 定義點按建議題目後的送出處理
+    def auto_submit_prompt(prompt):
+        st.session_state.chat_input = prompt
         st.rerun()
-    st.stop()
 
+    # 顯示建議提問（使用 follow_up 自動分割）
+    suggested_prompts = current_q.get("follow_up", "")
+    if suggested_prompts:
+        render_suggested_questions(suggested_prompts.split("|"), auto_submit_prompt)
 
+    # 顯示歷史對話紀錄（上半部）
+    if history:
+        st.markdown("##### 📜 歷史對話紀錄")
+        for msg in history:
+            with st.chat_message("user"):
+                st.markdown(msg["user"])
+            with st.chat_message("assistant"):
+                st.markdown(msg["gpt"])
 
-# 下半部輸入區
-if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 專家 AI"):
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    # 設定每題最多對話輪數
+    MAX_TURNS = 5
+    if len(history) >= MAX_TURNS:
+        st.warning("您已針對本題進行了多輪提問，建議前往下一題以持續學習 😊")
+        if st.button("👉 前往下一題"):
+            session.next()
+            st.rerun()
+        st.stop()
 
-    with st.chat_message("assistant"):
-        with st.spinner("AI 回覆中..."):
-            try:
-                # 呼叫改良版 call_gpt，傳入完整參數
-                gpt_reply = call_gpt(
-                    prompt=prompt,
-                    question_text=current_q["text"],
-                    learning_goal=current_q.get("learning_goal", ""),
-                    chat_history=get_conversation(chat_id),
-                    industry=st.session_state.get("industry", "")
-                )
-                st.markdown(gpt_reply)
-                add_turn(chat_id, prompt, gpt_reply)
+    # 下半部輸入區（st.chat_input）
+    if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 顧問 AI"):
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-            except Exception as e:
-                st.error(f"⚠️ AI 回覆失敗：{str(e)}")
+        with st.chat_message("assistant"):
+            with st.spinner("AI 回覆中..."):
+                try:
+                    gpt_reply = call_gpt(
+                        prompt=prompt,
+                        question_text=current_q["text"],
+                        learning_goal=current_q.get("learning_goal", ""),
+                        chat_history=get_conversation(chat_id),
+                        industry=st.session_state.get("industry", "")
+                    )
+                    st.markdown(gpt_reply)
+                    add_turn(chat_id, prompt, gpt_reply)
 
+                except Exception as e:
+                    st.error(f"⚠️ AI 回覆失敗：{str(e)}")
