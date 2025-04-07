@@ -47,7 +47,7 @@ from managers.feedback_manager import FeedbackManager
 from session_logger import save_to_json, load_from_json, save_to_sqlite
 from vector_builder.pdf_processor import PDFProcessor
 from vector_builder.metadata_handler import MetadataHandler
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 MODULE_MAP = {
@@ -254,6 +254,15 @@ if current_q:
             opt_key = opt.split("：")[0]
             if st.checkbox(opt, key=opt_key):
                 selected.append(opt_key)
+    # ✅ 若允許使用者自訂答案
+    custom_input = ""
+    if current_q.get("allow_custom_answer", False):
+        custom_input = st.text_input("✍️ 或填寫自訂答案：", key="custom_input")
+
+    # 🧠 決定最後送出的答案
+    if custom_input:
+        selected = [custom_input] if current_q["type"] == "single" else selected + [custom_input]
+      
 
     st.markdown("---")
     # 導航按鈕區塊
@@ -281,7 +290,7 @@ if current_q:
 
     # === GPT 對話式問答區塊 ===
     st.divider()
-    st.markdown("#### 🤖 問題機器人（針對本題進行延伸提問）")
+    st.markdown("#### 🤖 淨零小幫手（測試階段以五題為限）")
 
     # 初始化對話記憶
     if "qa_threads" not in st.session_state:
@@ -293,10 +302,12 @@ if current_q:
 
     # 顯示歷史對話
     for msg in get_conversation(chat_id):
-        with st.chat_message("user"):
-            st.markdown(msg["user"])
-        with st.chat_message("assistant"):
-            st.markdown(msg["gpt"])
+        if "user" in msg:
+            with st.chat_message("user"):
+                st.markdown(msg["user"])
+        if "gpt" in msg:
+            with st.chat_message("assistant"):
+                st.markdown(msg["gpt"])
 
     # 提問建議
     st.markdown("##### 💡 提問建議")
@@ -310,7 +321,7 @@ if current_q:
         with st.chat_message("assistant"):
             with st.spinner("AI 回覆中..."):
                 try:
-                    reply = call_gpt(prompt, current_q["text"], current_q.get("learning_goal", ""))
+                    reply = call_gpt(prompt)  
                     st.markdown(reply)
                     add_turn(chat_id, prompt, reply)
                 except Exception as e:
@@ -353,10 +364,8 @@ else:  # 確保這裡的 else 與上方 if 對齊
             st.rerun()
 
 # 向量處理（暫保留）
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-3-small",
-    dimensions=1536
-)
+embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+
 
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=400,

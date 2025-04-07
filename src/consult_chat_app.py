@@ -18,29 +18,6 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 from src.utils.gpt_tools import call_gpt
 
-def call_gpt(prompt: str, model: str = "gpt-3.5-turbo") -> str:
-    """
-    呼叫 GPT 模型，根據提供的 prompt 生成回應。
-    Params:
-        - prompt: 提供給 GPT 的文字提示
-        - model: 使用的 GPT 模型（預設為 gpt-3.5-turbo）
-    Return:
-        - GPT 回應的文字
-    """
-    try:
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "你是一位專業的 ESG 顧問，請用簡潔且實用的方式回答使用者問題。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5,
-            max_tokens=500
-        )
-        return response["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"⚠️ GPT 回應錯誤：{e}")
-        return "抱歉，目前無法取得回覆，請稍後再試。"
 
 # 載入自訂樣式
 def local_css(file_path):
@@ -122,17 +99,36 @@ if current_q:
     st.markdown("##### 💡 提問建議")
     st.info(current_q.get("follow_up", "目前尚無提示，您可自由發問"))
 
-    # 下半部輸入區
-    if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 專家 AI"):
-        with st.chat_message("user"):
-            st.markdown(prompt)
+# 設定每題最多對話輪數
+MAX_TURNS = 5
+if len(history) >= MAX_TURNS:
+    st.warning("您已針對本題進行了多輪提問，建議前往下一題以持續學習 😊")
+    if st.button("👉 前往下一題"):
+        session.next()
+        st.rerun()
+    st.stop()
 
-        with st.chat_message("assistant"):
-            with st.spinner("AI 回覆中..."):
-                try:
-                    gpt_reply = call_gpt(prompt, current_q["text"], current_q.get("learning_goal", ""))
-                    st.markdown(gpt_reply)
-                    add_turn(chat_id, prompt, gpt_reply)
-                except Exception as e:
-                    st.error(f"⚠️ AI 回覆失敗：{str(e)}")
+
+
+# 下半部輸入區
+if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 專家 AI"):
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        with st.spinner("AI 回覆中..."):
+            try:
+                # 呼叫改良版 call_gpt，傳入完整參數
+                gpt_reply = call_gpt(
+                    prompt=prompt,
+                    question_text=current_q["text"],
+                    learning_goal=current_q.get("learning_goal", ""),
+                    chat_history=get_conversation(chat_id),
+                    industry=st.session_state.get("industry", "")
+                )
+                st.markdown(gpt_reply)
+                add_turn(chat_id, prompt, gpt_reply)
+
+            except Exception as e:
+                st.error(f"⚠️ AI 回覆失敗：{str(e)}")
 
