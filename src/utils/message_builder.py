@@ -1,5 +1,7 @@
 # src/utils/message_builder.py
 from typing import List, Dict
+import streamlit as st
+from src.utils.survey_formatter import format_survey_context
 
 def build_chat_messages(
     prompt: str,
@@ -10,12 +12,19 @@ def build_chat_messages(
     system_role: str = ""
 ) -> List[Dict[str, str]]:
 
+    # 取得前導問卷資料（來自 welcome.py 儲存）
+    survey_data = st.session_state.get("user_intro_survey", {})
+    user_context = format_survey_context(survey_data)
+
     # 根據產業動態設定角色語氣
     industry_prompt = f"你正在協助一家屬於「{industry}」的企業進行 ESG 問卷與碳盤查診斷。" if industry else ""
-    
+
+    # 整合系統角色說明
     if not system_role:
         system_role = (
-            f"{industry_prompt} 你是一位專業的 ESG 顧問，擅長逐題引導企業理解碳盤查要點，語氣親切且能協助使用者釐清重點。\n"
+            f"{industry_prompt}\n"
+            f"以下是使用者的背景資訊：\n{user_context}\n\n"
+            "你是一位專業的 ESG 顧問，擅長逐題引導企業理解碳盤查要點，語氣親切且能協助使用者釐清重點。\n"
             "請根據題目脈絡與提問，提供 **實用、簡潔、帶有同理心** 的建議，並符合以下風格：\n"
             "1. 儘量使用 **條列式** 說明具體做法與觀念。\n"
             "2. 在回答最後加入 **鼓勵性語氣**，讓使用者感覺被支持。\n"
@@ -24,6 +33,7 @@ def build_chat_messages(
             "5. 避免艱澀語言，要像顧問和學員對談般自然。\n"
             "6. 若使用者已提問五輪，請幫忙**總結重點**，並建議進入下一題。"
         )
+
 
     messages = [{"role": "system", "content": system_role}]
 

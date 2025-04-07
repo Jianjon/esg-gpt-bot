@@ -1,22 +1,24 @@
+# 📄 welcome.py
+
 import streamlit as st
 from dotenv import load_dotenv
+from src.ui_components.user_intro_survey import show_intro_survey_page
 import os
+import json
 
 def show_welcome():
-    # 載入 .env 環境變數
     load_dotenv()
 
-    # 頁面設定
-    # st.set_page_config(page_title="ESG Service Path | 淨零小幫手", page_icon="🌱")
-    # st.title("🌱 淨零小幫手 ESG Service Path")
-
     st.markdown("""
-    歡迎使用 **淨零小幫手**，這是一套幫助企業了解自身永續現況的智能診斷工具。
+    ## 👋 歡迎使用淨零小幫手
 
-    本系統將透過您提供的資訊與問卷作答結果，
-    協助產出 ESG 現況分析、減碳建議與報告草稿。
+    這是一套幫助企業了解自身永續現況的智能診斷工具。  
+    系統將根據您的背景與問卷作答，協助產出 ESG 現況分析、減碳建議與報告草稿。
     """)
 
+    st.markdown("### 📝 請填寫您的基本資訊（必填）")
+
+    # 基本資料表單
     with st.form("user_info_form"):
         name = st.text_input("👤 您的姓名")
         email = st.text_input("📧 電子郵件（可選）")
@@ -26,38 +28,33 @@ def show_welcome():
         ])
         reset_data = st.checkbox("🗑️ 我要重設所有回答紀錄（此動作無法還原）")
 
-        st.markdown("---")
-        st.markdown("### 🧩 請選擇您要進行的診斷階段：")
-
-        stage_choice = st.radio(
-            "您希望從哪個階段開始？",
-            ["初階問卷（僅含基本題）", "進階問卷（含全部題目）"],
-            index=0
-        )
-
-        stage = "advanced" if stage_choice == "進階問卷（含全部題目）" else "basic"
-
-        start = st.form_submit_button("🚀 開始 ESG 問卷診斷")
+        start = st.form_submit_button("🚀 進入問卷填寫")
 
         if start:
             if not name or not company:
                 st.warning("請填寫姓名與公司名稱後再開始診斷。")
             else:
-                # 儲存使用者基本資訊到 session_state
+                # 儲存到 session_state
                 st.session_state.user_name = name
                 st.session_state.user_email = email
                 st.session_state.company_name = company
                 st.session_state.industry = industry
-                st.session_state.stage = stage
                 st.session_state.reset_data = reset_data
-                st.session_state.welcome_submitted = True  # ✅ 新增這行，標記已完成基本資訊填寫
 
-                # 清除原有紀錄（如果選擇重置）
+                # 設定進度為進入問卷頁
+                st.session_state.step = "survey"  # 👉 進入問卷頁
+                st.session_state.welcome_submitted = True
+
+                # 儲存檔案預備位置
                 session_file = os.path.join("data/sessions", f"{company}_{name}.json")
+                os.makedirs(os.path.dirname(session_file), exist_ok=True)
+
+                # 如果選擇重設，先刪除原始紀錄
                 if reset_data and os.path.exists(session_file):
                     os.remove(session_file)
-                    st.toast("✅ 已清除原有紀錄，問卷將從頭開始。")
+                    st.toast("✅ 已清除原有紀錄")
 
-                # 成功提示並重新載入頁面
+                # 成功提示並跳轉至問卷頁面
                 st.success("✅ 基本資訊完成，正在進入問卷頁面...")
-                st.rerun()
+                show_intro_survey_page()  # 跳轉到前導問卷頁面
+                st.stop()  # 停止當前頁面，確保不再執行後續程式

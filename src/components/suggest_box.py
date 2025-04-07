@@ -9,8 +9,8 @@ def render_suggested_questions(suggested_list: list, submit_callback):
     if not suggested_list:
         return
 
-    st.markdown("##### 💡 建議提問（點一下立即送出）")
     cols = st.columns(len(suggested_list))
     for i, text in enumerate(suggested_list):
-        if cols[i].button(text, key=f"suggested_q_{i}"):
+        label = f"💡 {text.strip()}"
+        if cols[i].button(label, key=f"suggested_q_{i}"):
             submit_callback(text)

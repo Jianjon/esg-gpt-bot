@@ -310,15 +310,7 @@ if current_q:
             with st.chat_message("assistant"):
                 st.markdown(msg["gpt"])
 
-    # 提問建議
-    st.markdown("##### 💡 提問建議")
-    st.info(current_q.get("follow_up", "目前尚無提示，您可自由發問"))
 
-    # 建議題目列表（之後也可用 current_q["follow_up"] 自動帶入）
-    suggested_prompts = [
-        "餐廳的規模是否影響碳盤查責任邊界？",
-        "中央廚房或物流要納入碳盤查嗎？"
-    ]
 
     # 定義點按按鈕後自動送出的處理流程
     def auto_submit_prompt(selected_prompt):
@@ -331,12 +323,23 @@ if current_q:
             with st.spinner("AI 回覆中..."):
                 context_text = f"{current_q['text']}\n{current_q.get('learning_goal', '')}"
                 reply = call_gpt(
-                    selected_prompt,
-                    context=context_text,
-                    chat_history=get_conversation(current_q["id"])
-                )
+                prompt=selected_prompt,
+                question_text=current_q["text"],
+                learning_goal=current_q.get("learning_goal", ""),
+                chat_history=get_conversation(current_q["id"]),
+                industry=st.session_state.get("industry", "")
+            )
+
                 st.markdown(reply)
                 add_turn(current_q["id"], selected_prompt, reply)
+
+    # 💡 自動從題目帶入建議提問（支援自然語句格式）
+    suggested_prompts_raw = current_q.get("follow_up", "")
+    suggested_prompts = [
+        s.strip() + "？"
+        for s in suggested_prompts_raw.split("？")
+        if s.strip()
+]
 
     # 🔵 在 chat_input 上方插入建議問題按鈕區
     render_suggested_questions(suggested_prompts, auto_submit_prompt)
@@ -433,3 +436,31 @@ class VectorStore:
         with open(output_dir / 'chunk_metadata.json', 'w') as f:
             json.dump(self.metadata, f, indent=2)
 
+# 📄 app.py
+
+import streamlit as st
+from src.loaders.question_loader import load_questions  # 正確引用此函式
+
+def show_learning_page():
+    # 讀取 session_state 中的階段與產業資料
+    stage = st.session_state.get("stage", "basic")  # 默認為初階
+    industry = st.session_state.get("industry", "餐飲業")  # 默認為餐飲業
+
+    # 根據階段載入題目
+    questions = load_questions(industry=industry, stage=stage)
+
+    st.markdown("## 🎯 開始您的 ESG 學習之旅")
+    st.markdown("""
+    歡迎來到學習頁面！這裡是為您量身設計的學習路徑，讓我們開始探索如何進行碳盤查、了解 ESG 的核心概念，並幫助您與企業合作減碳。
+    """)
+
+    # 顯示學習內容
+    st.markdown("### 學習模組 1: 碳盤查概述")
+    st.markdown("在這個模組中，您將學到如何進行碳盤查、什麼是碳足跡...")
+
+    # 顯示題目，依照 `stage` 顯示對應題目
+    st.markdown("### 這是您的問卷題目：")
+    for question in questions:
+        st.markdown(f"**{question['text']}**")  # 顯示問題
+        for option in question["options"]:  # 顯示選項
+            st.markdown(f"- {option}")

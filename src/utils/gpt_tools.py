@@ -15,13 +15,14 @@ def call_gpt(
     question_text: str = "",
     learning_goal: str = "",
     chat_history: List[Dict[str, str]] = None,
+    industry: str = "",
     model: str = "gpt-3.5-turbo-1106"
 ) -> str:
     """
     呼叫 GPT 模型，整合問題脈絡與歷史記憶給出回答
     """
     try:
-        messages = build_chat_messages(prompt, question_text, learning_goal, chat_history)
+        messages = build_chat_messages(prompt, question_text, learning_goal, chat_history, industry=industry)
         response = client.chat.completions.create(
             model=model,
             messages=messages,

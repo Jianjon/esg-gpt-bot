@@ -1,4 +1,5 @@
 # 📂 src/generators/report_generator.py
+
 """
 報告產生器：依據使用者作答內容，從語句模組中擷取對應語句，產出初步報告草稿。
 目前支援產出初階報告（依照每題 report_section 分組，聚合句子）
@@ -6,15 +7,14 @@
 
 from loaders.question_loader import load_all_question_data
 from loaders.template_loader import load_all_templates
+from src.utils.context_loader import load_user_session
+from src.utils.report_builder import generate_user_background_section
 
 
-def generate_basic_report(user_answers, question_data, templates):
+def generate_basic_report(user_answers, question_data, templates, user_info=None):
     """
-    user_answers: List[Dict]，包含使用者回答的題目 ID 及其選項，例如：
-      [{"question_id": "C001", "selected_option": "A"}, ...]
-
-    question_data: Dict[str, List[Dict]]，由 question_loader 提供
-    templates: Dict[str, Dict[str, List[str]]]，由 template_loader 提供
+    user_answers: List[Dict]，包含使用者回答的題目 ID 及其選項
+    user_info: dict, 來自 user session，包含問卷資料（optional）
 
     回傳一段報告文字（string）
     """
@@ -44,8 +44,15 @@ def generate_basic_report(user_answers, question_data, templates):
 
         report_sections[section].append(selected_sentence)
 
-    # 彙整報告文字
+    # 組合報告文字
     report_text = ""
+
+    # 1️⃣ 使用者背景段落（如果有提供 user_info）
+    if user_info and "user_intro_survey" in user_info:
+        background_section = generate_user_background_section(user_info["user_intro_survey"])
+        report_text += background_section + "\n\n---\n\n"
+
+    # 2️⃣ ESG 各區塊報告
     for section, lines in report_sections.items():
         report_text += f"\n\n### {section}\n"
         for line in lines:
@@ -65,6 +72,9 @@ if __name__ == "__main__":
         {"question_id": "C010", "selected_option": "D"},
     ]
 
-    report = generate_basic_report(sample_answers, questions, templates)
+    # 加入模擬 user session 資料（需先確保有此檔案）
+    user_info = load_user_session("綠意餐飲", "Jon")
+
+    report = generate_basic_report(sample_answers, questions, templates, user_info)
     print("\n📝 初階報告草稿：")
     print(report)
