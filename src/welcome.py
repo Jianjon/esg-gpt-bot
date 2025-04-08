@@ -4,7 +4,6 @@ import os
 import json
 
 def show_welcome_page():
-    st.set_page_config(page_title="歡迎使用淨零小幫手", page_icon="🌱")
     load_dotenv()
 
     st.markdown("""
@@ -16,7 +15,7 @@ def show_welcome_page():
 
     # ========== 基本資訊區塊 ==========
     st.markdown("### 📜 請填寫您的基本資訊（必填）")
-    with st.form("user_info_form"):
+    with st.form("form_basic_info"):
         name = st.text_input("👤 您的姓名")
         email = st.text_input("📧 電子郵件（可選）")
         company = st.text_input("🏢 公司名稱")
@@ -48,11 +47,13 @@ def show_welcome_page():
             st.rerun()  # ✅ 加這行強制刷新頁面
 
     # ========== 如果已提交基本資料，就顯示問卷 ==========
-    if st.session_state.get("welcome_submitted"):
+    if st.session_state.get("welcome_submitted") and not st.session_state.get("intro_survey_submitted"):
+    # 顯示問卷調查表單（form_intro_survey）
+
         st.divider()
         st.markdown("## 🧠 ESG 問卷前導調查")
 
-        with st.form("intro_survey_form"):
+        with st.form("form_intro_survey"):
             survey_data = {}
 
             st.markdown("#### 1️⃣ **您對溫室氣體盤查的認知為何？**")
@@ -62,7 +63,7 @@ def show_welcome_page():
                 "知道概念但不熟實務",
                 "曾經參與碳盤查",
                 "非常熟悉並可教學"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 2️⃣ **您使用本系統的主要動機為？**")
@@ -71,7 +72,7 @@ def show_welcome_page():
                 "幫助公司盤查與因應壓力",
                 "準備考試或證照",
                 "好奇試用"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 3️⃣ **您目前面臨哪些永續壓力？**")
@@ -80,7 +81,7 @@ def show_welcome_page():
                 "客戶或供應鏈要求",
                 "內部 ESG 承諾或目標",
                 "尚未感受到壓力"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 4️⃣ **您的角色或身分是？**")
@@ -90,7 +91,7 @@ def show_welcome_page():
                 "現場部門主管 / 員工",
                 "顧問 / 教育人員",
                 "學生或自由學習者"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 5️⃣ **您是否有 ESG 或碳盤查的相關經驗？**")
@@ -99,7 +100,7 @@ def show_welcome_page():
                 "參加過課程但尚未實作",
                 "有參與實作經驗",
                 "協助完成過 ESG 報告",
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 6️⃣ **您最想學習的主題？**")
@@ -109,7 +110,7 @@ def show_welcome_page():
                 "減碳策略與範疇分類",
                 "如何撰寫 ESG 報告",
                 "永續採購與循環經濟"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 7️⃣ **您是否有產品碳足跡的相關需求？**")
@@ -117,7 +118,7 @@ def show_welcome_page():
                 "是，有客戶或通路要求",
                 "還沒有，但將來可能需要",
                 "沒有，暫不考慮"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 8️⃣ **您偏好的學習方式是？**")
@@ -126,7 +127,7 @@ def show_welcome_page():
                 "實際案例導入",
                 "一步一步問答引導",
                 "影片或圖解輔助",
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 9️⃣ **您希望系統如何回覆您的提問？**")
@@ -135,7 +136,7 @@ def show_welcome_page():
                 "像老師引導學生那樣",
                 "像顧問給策略建議那樣",
                 "依照提問靈活調整"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("#### 🔟 **您希望系統給您怎樣的學習體驗？**")
@@ -144,7 +145,7 @@ def show_welcome_page():
                 "用提問方式幫我思考",
                 "循序漸進、一步步建立知識",
                 "依照我目前程度推薦內容"
-            ])
+            ], label_visibility="collapsed")
             st.markdown("---")
 
             st.markdown("### 🧩 **請選擇您要進行的診斷階段：**")
@@ -152,7 +153,7 @@ def show_welcome_page():
                 "",
                 ["初階問卷（僅含基本題）", "進階問卷（含全部題目）"],
                 index=0
-            )
+            , label_visibility="collapsed")
 
             submit = st.form_submit_button("🚀 開始 ESG 教學診斷")
 
@@ -161,4 +162,6 @@ def show_welcome_page():
                 st.session_state.stage = "advanced" if stage_choice == "進階問卷（含全部題目）" else "basic"
                 st.session_state.intro_survey_submitted = True
                 st.success("✅ 問卷完成，即將進入診斷主流程")
-                st.switch_page("app")  # 🚀 進入主問卷流程
+                st.session_state["go_to_main"] = True
+                st.rerun()
+

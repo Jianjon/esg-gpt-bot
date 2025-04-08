@@ -280,6 +280,10 @@ hr {
     border: none;
     border-top: 1px solid #ccc;
 }
+/* 縮排所有 Radio / Checkbox 的選項文字 */
+.css-1c7y2kd, .stRadio > div, .stCheckbox > div {
+    padding-left: 1.5rem;
+}
 
 
 /* ========= 清除不用樣式區 ========= */
