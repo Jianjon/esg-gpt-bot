@@ -1,4 +1,13 @@
 import streamlit as st
+
+if "user_name" not in st.session_state:
+    st.switch_page("1_welcome")
+    st.stop()
+
+if "intro_survey_submitted" not in st.session_state:
+    st.switch_page("2_intro_survey")
+    st.stop()
+
 st.set_page_config(page_title="ESG 問卷評斷", layout="centered")
 
 # _init_app 總體處理環境設定與 sys.path
@@ -20,12 +29,6 @@ st.markdown("""
         <div class="user-info">{}</div>
     </div>
 """.format(st.session_state.get("user_name", "未登入").upper()), unsafe_allow_html=True)
-
-# 檢查是否須先顯示 welcome 页面
-if "user_name" not in st.session_state or "industry" not in st.session_state:
-    from welcome import show_welcome
-    show_welcome()
-    st.stop()
 
 from collections import defaultdict
 from pathlib import Path
@@ -191,52 +194,15 @@ if st.session_state.get("jump_to"):
         st.session_state["jump_to"] = None
         st.rerun()
 
-# ===== 側邊列重構（使用 question_set） =====
-with st.sidebar:
-    st.title("📋 ESG Service Path | 淨零小幫手")
-    st.markdown("---")
-    st.header("👤 使用者資訊")
-    st.markdown(f"**姓名：** {st.session_state.user_name}")
-    st.markdown(f"**階段：** {'初階' if st.session_state.stage == 'basic' else '進階'}")
-    st.markdown(f"**目前進度：** {session.current_index + 1} / {len(session.question_set)}")
-    st.markdown("---")
-    st.markdown("### 📊 主題進度概覽")
-
-    current_topic = current_q.get("topic") if current_q else None
-    answered_ids = {r["question_id"] for r in session.responses}
-
-    questions_by_topic = defaultdict(list)
-    for q in session.question_set:
-        topic = q.get("topic", "未分類")
-        questions_by_topic[topic].append(q)
-
-    for topic, q_list in questions_by_topic.items():
-        total = len(q_list)
-        answered = sum(1 for q in q_list if q["id"] in answered_ids)
-        checked = "✅ " if answered == total else ""
-        expanded = topic == current_topic
-
-        with st.expander(f"{checked}{topic}", expanded=expanded):
-            for idx, q in enumerate(q_list, 1):
-                is_done = q["id"] in answered_ids
-                label = f"{idx}. {q.get('text', '')[:15]}..."
-                if is_done:
-                    label += " ✔"
-
-                key = f"jump_to_{q['id']}"
-                if st.button(label, key=key):
-                    st.session_state["jump_to"] = q["id"]
-                    st.rerun()
-
 # 固定主體容器
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
 
 # 主體內容：問題主體、說明與選項
 if current_q:
+    st.markdown(f"### 👣 目前進度：第 {session.current_index + 1} 題 / 共 {len(session.question_set)} 題")
     st.markdown(f"#### 🎯 學習主題：<br>{current_q.get('learning_goal', '')}", unsafe_allow_html=True)
-    st.markdown("---")
-    st.markdown(f"<h3>{current_q.get('text', '')}</h3>", unsafe_allow_html=True)
     st.markdown(f"**題目說明：** {current_q.get('question_note', '')}")
+    st.markdown("---")
 
     # 顯示選項們
     options = current_q["options"]
@@ -464,3 +430,11 @@ def show_learning_page():
         st.markdown(f"**{question['text']}**")  # 顯示問題
         for option in question["options"]:  # 顯示選項
             st.markdown(f"- {option}")
+
+import streamlit as st
+
+st.set_page_config(page_title="ESG 問卷主流程", layout="centered")
+
+# 進入問卷主畫面（此處開始才進行學習與問答）
+st.markdown(f"### 🎯 歡迎 {st.session_state.user_name}，開始 ESG 問答診斷")
+# ...載入題庫與主流程邏輯
