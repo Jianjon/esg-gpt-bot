@@ -1,3 +1,4 @@
+
 /* ========= 基本設定 ========= */
 body {
     font-family: 'Segoe UI', sans-serif;
@@ -257,6 +258,29 @@ section.main > div.block-container {
     font-weight: bold;
     margin-left: 8px;
 }
+
+
+/* ========= 問卷選項內縮樣式 ========= */
+div[data-baseweb="radio"] label,
+div[data-baseweb="checkbox"] label {
+    padding-left: 2rem;
+}
+/* 問卷題目區塊樣式（使用 st-radio 外層樣式選取器） */
+div[data-testid="stRadio"] > label {
+    font-weight: 700;
+    font-size: 18px;
+    color: #2c3e50;
+    margin-bottom: 6px;
+}
+
+/* 分隔線上方留空，讓題目看起來分開 */
+hr {
+    margin-top: 24px;
+    margin-bottom: 24px;
+    border: none;
+    border-top: 1px solid #ccc;
+}
+
 
 /* ========= 清除不用樣式區 ========= */
 /* 已移除：.floating-input, .submit-button, .chat-row, .chat-submit */

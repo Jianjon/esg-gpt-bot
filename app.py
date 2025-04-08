@@ -1,12 +1,15 @@
 import streamlit as st
 
-if "user_name" not in st.session_state:
-    st.switch_page("1_welcome")
+import src.welcome as welcome
+
+if "user_name" not in st.session_state or not st.session_state.get("intro_survey_submitted", False):
+    welcome.show_welcome_page()
     st.stop()
 
 if "intro_survey_submitted" not in st.session_state:
-    st.switch_page("2_intro_survey")
+    st.warning("⚠️ 請先完成 ESG 前導問卷（已整合於 Welcome 頁面）")
     st.stop()
+
 
 st.set_page_config(page_title="ESG 問卷評斷", layout="centered")
 
