@@ -1,10 +1,9 @@
-# src/utils/gpt_tools.py
-
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from typing import List, Dict
 from src.utils.message_builder import build_chat_messages
+import inspect  # ← 加在這裡也可以
 
 # 載入環境變數
 load_dotenv()
@@ -16,7 +15,8 @@ def call_gpt(
     learning_goal: str = "",
     chat_history: List[Dict[str, str]] = None,
     industry: str = "",
-    model: str = "gpt-3.5-turbo-1106"
+    model: str = "gpt-3.5-turbo-1106",
+    temperature: float = 0.4
 ) -> str:
     """
     呼叫 GPT 模型，整合問題脈絡與歷史記憶給出回答
@@ -26,7 +26,7 @@ def call_gpt(
         response = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=0.4,
+            temperature=temperature,
             max_tokens=700
         )
         return response.choices[0].message.content.strip()
@@ -34,3 +34,5 @@ def call_gpt(
         print(f"⚠️ GPT 回應錯誤：{e}")
         return "目前無法取得 AI 回覆，請稍後再試。"
 
+# ✅ 把這行移到函式定義之後！
+print("✅ call_gpt 被載入了！來源：", inspect.getfile(call_gpt))

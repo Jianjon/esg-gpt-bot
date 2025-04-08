@@ -292,20 +292,32 @@ if current_q:
         custom_input = st.text_input("請輸入您的想法或做法...", key="custom_input")
 
 import streamlit as st
-from src.utils.prompt_builder import build_learning_prompt
+from src.utils.prompt_builder import build_learning_prompt, generate_user_friendly_prompt
 from src.utils.gpt_tools import call_gpt
 
-# 🧠 決定最後送出的答案（補充第一段的 custom_input 處理邏輯）
-if "custom_input" in locals() and custom_input:  # 確保 custom_input 已定義
-    selected = [custom_input] if current_q["type"] == "single" else selected + [custom_input]
-user_answer = selected  # 最終的用戶答案
+# 假設的問題資料和用戶輸入
+current_q = {"id": "q1", "type": "single", "question": "你的公司是否關注 ESG 議題？"}
+selected = st.selectbox("選擇答案：", ["是", "否"])
+selected = [selected]
+custom_input = st.text_input("如果有其他想法，請輸入：", value="")
 
-# 構建用戶資料，包含前導問卷結果（補充第一段的 user_intro_survey）
+# 確保必要的變數已定義
+if "user_intro_survey" not in st.session_state:
+    st.session_state.user_intro_survey = {"background": "未知"}
+
+# 生成介紹性回應
+friendly_intro = generate_user_friendly_prompt(current_q, st.session_state.user_intro_survey)
+st.write("介紹：", friendly_intro)
+
+# 後續的 GPT 教學邏輯
+if custom_input:
+    selected = [custom_input] if current_q["type"] == "single" else selected + [custom_input]
+
 user_profile = {
     "user_name": st.session_state.get("user_name", ""),
     "company_name": st.session_state.get("company_name", ""),
     "industry": st.session_state.get("industry", ""),
-    **st.session_state.get("user_intro_survey", {})  # 合併前導問卷結果
+    **st.session_state.get("user_intro_survey", {})
 }
 
 # 構建 prompt
@@ -316,7 +328,7 @@ if st.button("🤖 由 ESG 小幫手產生教學引導", key="btn_gpt_teaching")
     with st.chat_message("assistant"):
         with st.spinner("AI 教學中，請稍候..."):  # 使用第二段的提示訊息
             try:
-                gpt_reply = call_gpt(prompt_text)
+                gpt_reply = call_gpt(prompt_text, temperature=0.7)
                 st.markdown(gpt_reply)
                 add_turn(current_q["id"], prompt_text, gpt_reply)
             except Exception as e:
