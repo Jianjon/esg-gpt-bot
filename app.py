@@ -35,16 +35,19 @@ from collections import defaultdict
 from pathlib import Path
 import pandas as pd
 import os
+import sys
 import json
 import matplotlib.pyplot as plt
 import faiss
 import fitz
 import re
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
 from typing import List, Dict, Tuple
 from src.utils.prompt_builder import generate_user_friendly_prompt  # 放在這段最上面（只要匯入一次）
 from sessions.answer_session import AnswerSession
 from sessions.context_tracker import get_conversation, add_context_entry, add_turn
-# from sessions.context_tracker import get_all_summaries
+from sessions.context_tracker import get_all_summaries
 from managers.baseline_manager import BaselineManager
 from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
@@ -54,6 +57,14 @@ from vector_builder.metadata_handler import MetadataHandler
 from langchain_openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from src.components.suggest_box import render_suggested_questions
+from src.managers.guided_rag import GuidedRAG
+from managers.profile_manager import get_user_profile
+from utils.prompt_builder import generate_user_friendly_prompt
+from langchain.embeddings import OpenAIEmbeddings
+
+
+user_profile = get_user_profile()
+
 
 MODULE_MAP = {
     "C": "ESG 教學導入（教學前導）",
@@ -171,6 +182,33 @@ if "session" not in st.session_state:
             session_file.unlink()
             st.toast("✅ 已清除原有紀錄，問卷將從頭開始。")
             st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
+            from src.utils.prompt_builder import generate_dynamic_question_block
+            from src.utils.gpt_tools import call_gpt
+
+            for q in questions[:5]:
+                cache_key = f"gpt_question_intro_{q['id']}"
+                if cache_key not in st.session_state:
+                    prompt = generate_dynamic_question_block(
+                        user_profile=st.session_state.user_intro_survey,
+                        current_q=q,
+                        user_answer=""
+                    )
+                    try:
+                        gpt_response = call_gpt(prompt)
+                        parts = gpt_response.split("【說明】")
+                        title = parts[0].replace("【題目】", "").strip()
+                        intro = parts[1].strip()
+                    except Exception:
+                        title = q.get("text", "")
+                        intro = q.get("question_note", "")
+
+                    # 存進快取
+                    st.session_state[cache_key] = {
+                        "title": title,
+                        "intro": intro
+                    }
+
+
         else:
             session = load_from_json(user_id, questions)
             if session:
@@ -236,32 +274,85 @@ with st.sidebar:
 # 固定主體容器
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
 
-# 顯示顧問引導
-friendly_intro = generate_user_friendly_prompt(current_q, st.session_state.user_intro_survey)
+# 取得上一題摘要
+all_summaries = st.session_state.get("context_history", [])
+previous_summary = all_summaries[-1]["summary"] if all_summaries else ""
+
+# 查詢 RAG 補充資料
+rag = GuidedRAG(vector_path="data/vector_output/")
+# 取得用戶提問（根據你的 current_q 結構）
+user_question = current_q.get("learning_goal") or current_q.get("topic", "")
+
+# 使用 RAG 模組回答（使用 ask() 方法）
+rag_response, related_chunks = rag.ask(
+    user_question=user_question,
+    history=[],       # 若還沒開始對話，可先傳空的
+    turn=1            # 第一輪對話
+)
+
+# 你可以視需要選擇回傳的 rag_response 或相關 chunk
+rag_context = rag_response
+
+# === 自動查詢 RAG 補充知識 ===
+query_topic = current_q.get("learning_goal") or current_q.get("topic", "")
+rag_context = rag.query(query_topic) if query_topic else ""
+
+# 顯示顧問引導（支援語氣風格）
+tone = st.session_state.get("preferred_tone", "gentle")
+friendly_intro = generate_user_friendly_prompt(
+    current_q=current_q,
+    user_profile=st.session_state.user_intro_survey,
+    previous_summary=previous_summary,
+    rag_context=rag_context,
+    tone=st.session_state.get("preferred_tone", "gentle")  # 🌟 預設 gentle
+)
 
 st.markdown("#### 💬 顧問引導")
-st.markdown(f"**{friendly_intro}**")  # ✅ 顯示粗體引導語
+st.markdown(f"**{friendly_intro}**")
+
 
 # 主體內容：問題主體、說明與選項
 if current_q:
-    # ===== 顯示學習目標 =====
-    goal = current_q.get("learning_goal", "")
-    st.markdown("#### 🎯 學習目標")
-    st.markdown(f"<p style='font-size:18px'><strong><em>{goal}</em></strong></p>", unsafe_allow_html=True)
-
     #===== 顯示題目主文 =====
     st.markdown("---")
+        # === 使用 GPT 改寫題目與說明（快取機制）===
+    cache_key = f"gpt_question_intro_{current_q['id']}"
+    if cache_key not in st.session_state:
+        from src.utils.prompt_builder import generate_dynamic_question_block
+        from src.utils.gpt_tools import call_gpt
+
+        dynamic_prompt = generate_dynamic_question_block(
+            user_profile=st.session_state.user_intro_survey,
+            current_q=current_q,
+            user_answer=user_answer if 'user_answer' in locals() else ""
+        )
+
+        try:
+            gpt_response = call_gpt(dynamic_prompt)
+            parts = gpt_response.split("【說明】")
+            question_title = parts[0].replace("【題目】", "").strip()
+            question_intro = parts[1].strip()
+        except Exception:
+            question_title = current_q.get("text", "")
+            question_intro = current_q.get("question_note", "")
+
+        # ✨ 儲存進 session_state，避免重跑
+        st.session_state[cache_key] = {
+            "title": question_title,
+            "intro": question_intro
+        }
+    else:
+        # ✅ 使用快取結果
+        question_title = st.session_state[cache_key]["title"]
+        question_intro = st.session_state[cache_key]["intro"]
+
+    # === 顯示題目與說明 ===
     st.markdown("### 📝 題目")
-    st.markdown(f"<p style='font-size:18px'><strong>{current_q.get('text', '')}</strong></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='font-size:18px'><strong>{question_title}</strong></p>", unsafe_allow_html=True)
 
-    st.markdown("  \n")
-    # ===== 顯示題目說明（若有）=====
-    note = current_q.get("question_note", "")
-    if note:
-        st.markdown("#### 🗒️ 題目說明")
-        st.markdown(f"<div style='font-size:16px'>{note}</div>", unsafe_allow_html=True)
+    st.markdown("#### 🗒️ 題目說明")
+    st.markdown(f"<div style='font-size:16px'>{question_intro}</div>", unsafe_allow_html=True)
 
-    st.markdown("  \n")
 
     # 顯示選項們
     options = current_q["options"]
@@ -270,7 +361,7 @@ if current_q:
     formatted_options = []
     for opt in options:
         note = option_notes.get(opt, "")
-        html = f"<strong>{opt}</strong>：<span style='font-size:15px'>{note}</span>"
+        html = f"{opt}：{note}"
         formatted_options.append(html)
 
     selected = []
@@ -288,26 +379,29 @@ if current_q:
     # ✅ 若允許使用者自訂答案
     custom_input = ""
     if current_q.get("allow_custom_answer", False):
-        st.markdown("#### ✍️ <strong>若以上選項都不合適，請填寫您的自訂答案：</strong>", unsafe_allow_html=True)
         custom_input = st.text_input("請輸入您的想法或做法...", key="custom_input")
 
 import streamlit as st
 from src.utils.prompt_builder import build_learning_prompt, generate_user_friendly_prompt
 from src.utils.gpt_tools import call_gpt
 
-# 假設的問題資料和用戶輸入
-current_q = {"id": "q1", "type": "single", "question": "你的公司是否關注 ESG 議題？"}
-selected = st.selectbox("選擇答案：", ["是", "否"])
-selected = [selected]
-custom_input = st.text_input("如果有其他想法，請輸入：", value="")
 
 # 確保必要的變數已定義
 if "user_intro_survey" not in st.session_state:
     st.session_state.user_intro_survey = {"background": "未知"}
 
-# 生成介紹性回應
-friendly_intro = generate_user_friendly_prompt(current_q, st.session_state.user_intro_survey)
-st.write("介紹：", friendly_intro)
+# 假設你已經從 `context_tracker` 取得上一題摘要（例如 get_previous_summary(current_q['id'])）
+previous_summary = all_summaries(current_q['id'])
+
+friendly_intro = generate_user_friendly_prompt(
+    current_q,
+    st.session_state.user_intro_survey,
+    previous_summary=previous_summary,   # 這是上一題的小結
+    rag_context=""                        # 這是 RAG 補充知識（若已自動查詢則傳空字串）
+)
+
+st.markdown(f"**{friendly_intro}**")
+
 
 # 後續的 GPT 教學邏輯
 if custom_input:
@@ -319,6 +413,24 @@ user_profile = {
     "industry": st.session_state.get("industry", ""),
     **st.session_state.get("user_intro_survey", {})
 }
+
+# 🔍 根據目前題目 ID 找出對應的使用者作答
+qid = current_q["id"]
+user_answer = next(
+    (resp["user_response"] for resp in session.responses if resp["question_id"] == qid),
+    None
+)
+
+if not user_answer:
+    # 若使用者尚未回答該題，就使用當前勾選或輸入值（避免錯誤）
+    if selected:
+        user_answer = selected if current_q["type"] == "multiple" else selected[0]
+    if custom_input:
+        if current_q["type"] == "multiple":
+            user_answer = (user_answer or []) + [custom_input]
+        else:
+            user_answer = custom_input
+
 
 # 構建 prompt
 prompt_text = build_learning_prompt(user_profile, current_q, user_answer)
@@ -504,10 +616,12 @@ class ChunkMetadata:
         self.language = ""
 
 class VectorStore:
-    def __init__(self):
-        self.dimension = 1536
+    def __init__(self, dimension: int = 384, model_name: str = "all-MiniLM-L6-v2"):
+        self.dimension = dimension
+        self.model_name = model_name
         self.index = faiss.IndexFlatIP(self.dimension)
-        self.metadata = []
+        self.metadata: List[Dict] = []
+        self.embed_model = OpenAIEmbeddings(model_name)
 
     def add_vectors(self, vectors, metadata_list):
         self.index.add(vectors)

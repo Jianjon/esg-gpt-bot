@@ -2,13 +2,5 @@
   "user_id": "TISDM_Chien,Chung Chang",
   "stage": "survey",
   "total_questions": 34,
-  "responses": [
-    {
-      "question_id": "B001",
-      "question_text": "公司規模如何？（員工數、廠區數量，單一/多點營運？）",
-      "user_response": "1-10人",
-      "question_type": "single",
-      "topic": "邊界設定與組織資訊"
-    }
-  ]
+  "responses": []
 }

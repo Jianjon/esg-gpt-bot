@@ -28,12 +28,13 @@ def main():
     vector_store = VectorStore()
 
     base_dir = Path("data/db_pdf_data")
-    output_dir = Path("data/vector_output")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = "data/vector_output"  # ✅ 傳 str，VectorStore 內部會自動轉 Path
 
-    log_file = output_dir / "build_log.txt"
-    record_file = output_dir / "vector_build_record.json"
+    log_file = Path(output_dir) / "build_log.txt"
+    record_file = Path(output_dir) / "vector_build_record.json"
     processed_record = load_processed_record(record_file)
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
         filename=log_file,
@@ -62,6 +63,11 @@ def main():
         chunks = pdf_processor.process_pdf(pdf_path)
         for chunk_text, raw_meta in tqdm(chunks, desc="🔹 分段與嵌入", leave=False):
             enriched = metadata_handler.enrich_metadata(raw_meta, chunk_text)
+            enriched.update({
+                "text": chunk_text,
+                "source_file": pdf_path.name,
+                "source_path": str(pdf_path.resolve())
+            })
             try:
                 vector = get_embedding(chunk_text)
                 all_vectors.append(vector)

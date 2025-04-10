@@ -1,15 +1,21 @@
-from openai import OpenAI
+import openai
 from typing import List, Dict
 import streamlit as st
 import os
-import openai
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # 初始化記憶結構
 if "context_history" not in st.session_state:
     st.session_state.context_history = []
+if "qa_threads" not in st.session_state:
+    st.session_state.qa_threads = {}
+if "guided_chat" not in st.session_state:
+    st.session_state.guided_chat = []
+if "guided_turns" not in st.session_state:
+    st.session_state.guided_turns = 0
 
+# --- Context 紀錄 ---
 def add_context_entry(question_id: str, user_response, question_text: str):
     """
     將使用者的回答與對應問題送進 GPT，生成簡短摘要並儲存
@@ -42,22 +48,15 @@ def add_context_entry(question_id: str, user_response, question_text: str):
         return "（摘要失敗）"
 
 def get_all_summaries() -> List[str]:
-    return [f"Q{entry['id']}：{entry['summary']}" for entry in st.session_state.context_history]
+    """
+    從 `qa_threads` 中獲取所有問題的摘要（最後一輪回答）。
+    """
+    return [
+        f"Q{q_id}：{st.session_state.qa_threads[q_id][-1]['assistant']}"
+        for q_id in st.session_state.qa_threads
+    ]
 
-# --- 對話紀錄（每一題對應一個對話 thread） ---
-# ✅ 初始化必要欄位
-if "qa_threads" not in st.session_state:
-    st.session_state.qa_threads = {}
-
-if "context_history" not in st.session_state:
-    st.session_state.context_history = []
-
-if "guided_chat" not in st.session_state:
-    st.session_state.guided_chat = []
-
-if "guided_turns" not in st.session_state:
-    st.session_state.guided_turns = 0
-
+# --- 對話紀錄管理 ---
 def get_conversation(question_id: str) -> List[Dict[str, str]]:
     return st.session_state.qa_threads.get(question_id, [])
 
@@ -68,40 +67,60 @@ def add_turn(question_id: str, user_input: str, assistant_reply: str):
         "user": user_input,
         "assistant": assistant_reply
     })
+
+# --- 自動產生後續建議 ---
 def generate_following_action(question_id: str) -> str:
     """
-    根據某一題的所有對話紀錄，自動總結一段後續建議（following action）
+    根據該題的使用者背景、作答摘要與對話歷程，自動產出下一步可行建議
     """
     history = st.session_state.qa_threads.get(question_id, [])
-    if not history:
-        return "（尚無足夠對話內容）"
+    chat_log = "\n".join([
+        f"使用者：{turn['user']}\nAI：{turn['assistant']}"
+        for turn in history
+    ]) if history else "（無對話紀錄）"
 
-    # 整理所有提問與回覆
-    chat_log = "\n".join(
-        [f"使用者：{turn['user']}\nAI：{turn['assistant']}" for turn in history]
+    # 使用者背景資訊
+    user_profile = st.session_state.get("user_intro_survey", {})
+    role = user_profile.get("q4", "使用者")
+    motivation = user_profile.get("q2", "")
+    experience = user_profile.get("q5", "")
+    industry = st.session_state.get("industry", "某產業")
+
+    # 擷取該題摘要
+    summary = next(
+        (s["summary"] for s in st.session_state.get("context_history", []) if s["id"] == question_id),
+        "使用者已完成本題作答，正在尋找後續方向。"
     )
 
     prompt = f"""
-請根據以下使用者與 AI 關於 ESG 題目的對話，生成一段具體的「後續行動建議」，限 2–3 句話，明確指出下一步可執行的改善方向。
+你是一位 ESG 顧問助理，請根據下列資訊，幫助企業提出一段具體可行的後續建議（最多 100 字）：
 
-對話紀錄：
+【使用者背景】
+- 產業：{industry}
+- 角色：{role}
+- 動機：{motivation}
+- 經驗：{experience}
+
+【本題摘要】
+{summary}
+
+【對話紀錄】
 {chat_log}
 
-請以「建議：」開頭，輸出具體可行的建議：
+請以「建議：」開頭，用口語化且實務導向的語氣，輸出一句話作為行動建議。
 """
 
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "你是一位幫助企業進行 ESG 分析與診斷的顧問助理。"},
+                {"role": "system", "content": "你是一位 ESG 顧問助理，協助企業從碳盤查學習中得出後續行動建議。"},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
-            max_tokens=120
+            max_tokens=100
         )
-        result = response["choices"][0]["message"]["content"].strip()
-        return result
+        return response["choices"][0]["message"]["content"].strip()
 
     except Exception as e:
         print("⚠️ following action 產生失敗：", e)
