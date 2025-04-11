@@ -36,34 +36,29 @@ from pathlib import Path
 import pandas as pd
 import os
 import sys
-import json
-import matplotlib.pyplot as plt
-import faiss
-import fitz
-import re
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from typing import List, Dict, Tuple
-from src.utils.prompt_builder import generate_user_friendly_prompt  # 放在這段最上面（只要匯入一次）
-from sessions.answer_session import AnswerSession
-from sessions.context_tracker import get_conversation, add_context_entry, add_turn
-from sessions.context_tracker import get_all_summaries
+from sessions.context_tracker import get_previous_summary
 from managers.baseline_manager import BaselineManager
 from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
-from session_logger import save_to_json, load_from_json, save_to_sqlite
-from vector_builder.pdf_processor import PDFProcessor
-from vector_builder.metadata_handler import MetadataHandler
-from langchain_openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from src.components.suggest_box import render_suggested_questions
+from src.utils.session_saver import save_to_json, load_from_json, save_to_sqlite
 from src.managers.guided_rag import GuidedRAG
 from managers.profile_manager import get_user_profile
 from utils.prompt_builder import generate_user_friendly_prompt
-from langchain.embeddings import OpenAIEmbeddings
+import streamlit.runtime.runtime as runtime
+from src.components.questionnaire_fragment import render_questionnaire
+from src.components.chatbox_fragment import render_chatbox
+from sessions.answer_session import AnswerSession  # 確保這行有匯入
 
+
+if not hasattr(st, "fragment"):
+    st.error("⚠️ 目前 Streamlit 版本過低，請升級至 1.36.0 以上才能使用 Fragment 功能。")
+    st.stop()
 
 user_profile = get_user_profile()
+
 
 
 MODULE_MAP = {
@@ -160,6 +155,84 @@ def load_questions(industry: str, stage: str = "basic", skip_common: bool = Fals
 
     return sorted(questions, key=question_sort_key)
 
+
+
+# 取得 user_id（用於識別與 session 儲存）
+user_id = f"{st.session_state.get('company_name', 'unknown')}_{st.session_state.get('user_name', 'user')}"
+
+# 載入題庫（根據產業與階段）
+current_stage = st.session_state.stage
+questions = load_questions(
+    industry=st.session_state.industry,
+    stage=current_stage,
+    skip_common=True
+)
+
+
+# ===== 初始化問卷 Session（要放在主流程前段，不能放太後面） =====
+if "session" not in st.session_state:
+    session_file = Path("data/sessions") / f"{st.session_state.company_name}_{st.session_state.user_name}.json"
+    if session_file.exists():
+        if st.session_state.get("reset_data"):
+            session_file.unlink()
+            st.toast("✅ 已清除原有紀錄，問卷將從頭開始。")
+            st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
+
+            # ➕ 額外產生 GPT 快取（前 5 題）
+            from src.utils.prompt_builder import generate_dynamic_question_block
+            from src.utils.gpt_tools import call_gpt
+
+            for q in questions[:5]:
+                cache_key = f"gpt_question_intro_{q['id']}"
+                if cache_key not in st.session_state:
+                    prompt = generate_dynamic_question_block(
+                        user_profile=st.session_state["user_intro_survey"],
+                        current_q=q,
+                        user_answer=""
+                    )
+                    try:
+                        gpt_response = call_gpt(prompt)
+                        parts = gpt_response.split("【說明】")
+                        title = parts[0].replace("【題目】", "").strip()
+                        intro = parts[1].strip()
+                    except Exception:
+                        title = q.get("text", "")
+                        intro = q.get("question_note", "")
+
+                    st.session_state[cache_key] = {
+                        "title": title,
+                        "intro": intro
+                    }
+
+        else:
+            session = load_from_json(user_id, questions)
+            if session:
+                if st.button("🔄 繼續上次答題進度"):
+                    st.session_state.session = session
+                    st.rerun()
+                else:
+                    st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
+                    st.rerun()
+    else:
+        st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
+
+
+
+def get_previous_summary(current_qid: str) -> str:
+    summaries = st.session_state.get("context_history", [])
+    session = st.session_state.get("session")
+    if not session:
+        return ""
+    idx = next((i for i, q in enumerate(session.question_set) if q["id"] == current_qid), None)
+    if idx is None or idx == 0:
+        return ""
+    prev_qid = session.question_set[idx - 1]["id"]
+    match = next((s for s in summaries if s["id"] == prev_qid), None)
+    return match["summary"] if match else ""
+
+if "context_history" not in st.session_state:
+    st.session_state["context_history"] = []
+
 # ===== 初始化設定 =====
 if "stage" not in st.session_state:
     st.session_state.stage = "basic"
@@ -175,55 +248,6 @@ questions = load_questions(
     skip_common=True
 )
 
-if "session" not in st.session_state:
-    session_file = Path("data/sessions") / f"{st.session_state.company_name}_{st.session_state.user_name}.json"
-    if session_file.exists():
-        if st.session_state.get("reset_data"):
-            session_file.unlink()
-            st.toast("✅ 已清除原有紀錄，問卷將從頭開始。")
-            st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
-            from src.utils.prompt_builder import generate_dynamic_question_block
-            from src.utils.gpt_tools import call_gpt
-
-            for q in questions[:5]:
-                cache_key = f"gpt_question_intro_{q['id']}"
-                if cache_key not in st.session_state:
-                    prompt = generate_dynamic_question_block(
-                        user_profile=st.session_state.user_intro_survey,
-                        current_q=q,
-                        user_answer=""
-                    )
-                    try:
-                        gpt_response = call_gpt(prompt)
-                        parts = gpt_response.split("【說明】")
-                        title = parts[0].replace("【題目】", "").strip()
-                        intro = parts[1].strip()
-                    except Exception:
-                        title = q.get("text", "")
-                        intro = q.get("question_note", "")
-
-                    # 存進快取
-                    st.session_state[cache_key] = {
-                        "title": title,
-                        "intro": intro
-                    }
-
-
-        else:
-            session = load_from_json(user_id, questions)
-            if session:
-                if st.button("🔄 繼續上次答題進度"):
-                    st.session_state.session = session
-                    st.rerun()
-                else:
-                    st.warning("偵測到您有未完成的問卷紀錄，您可以選擇繼續或重新開始。")
-                    st.stop()
-    else:
-        st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
-
-session = st.session_state.session
-current_q = session.get_current_question()
-
 # ===== 啟用 jump_to 跳題 =====
 if st.session_state.get("jump_to"):
     qid = st.session_state["jump_to"]
@@ -233,13 +257,24 @@ if st.session_state.get("jump_to"):
         st.session_state["jump_to"] = None
         st.rerun()
 
+
+
+# ✅ 初始化後就可以使用
+session: AnswerSession = st.session_state["session"]
+
+
+current_q: dict = session.get_current_question()
+if not current_q:
+    st.warning("⚠️ 找不到目前題目，請重新載入問卷流程")
+    st.stop()
+
 # ===== 側邊列重構（使用 question_set） =====
 with st.sidebar:
     st.title("📋 ESG Service Path | 淨零小幫手")
     st.markdown("---")
     st.header("👤 使用者資訊")
-    st.markdown(f"**姓名：** {st.session_state.user_name}")
-    st.markdown(f"**階段：** {'初階' if st.session_state.stage == 'basic' else '進階'}")
+    st.markdown(f"**姓名：** {st.session_state["user_name"]}")
+    st.markdown(f"**階段：** {'初階' if st.session_state["stage"] == 'basic' else '進階'}")
     st.markdown(f"**目前進度：** {session.current_index + 1} / {len(session.question_set)}")
     st.markdown("---")
     st.markdown("### 📊 主題進度概覽")
@@ -274,9 +309,6 @@ with st.sidebar:
 # 固定主體容器
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
 
-# 取得上一題摘要
-all_summaries = st.session_state.get("context_history", [])
-previous_summary = all_summaries[-1]["summary"] if all_summaries else ""
 
 # 查詢 RAG 補充資料
 rag = GuidedRAG(vector_path="data/vector_output/")
@@ -297,266 +329,54 @@ rag_context = rag_response
 query_topic = current_q.get("learning_goal") or current_q.get("topic", "")
 rag_context = rag.query(query_topic) if query_topic else ""
 
-# 顯示顧問引導（支援語氣風格）
-tone = st.session_state.get("preferred_tone", "gentle")
-friendly_intro = generate_user_friendly_prompt(
-    current_q=current_q,
-    user_profile=st.session_state.user_intro_survey,
-    previous_summary=previous_summary,
-    rag_context=rag_context,
-    tone=st.session_state.get("preferred_tone", "gentle")  # 🌟 預設 gentle
-)
-
-st.markdown("#### 💬 顧問引導")
-st.markdown(f"**{friendly_intro}**")
-
-
-# 主體內容：問題主體、說明與選項
-if current_q:
-    #===== 顯示題目主文 =====
-    st.markdown("---")
-        # === 使用 GPT 改寫題目與說明（快取機制）===
-    cache_key = f"gpt_question_intro_{current_q['id']}"
-    if cache_key not in st.session_state:
-        from src.utils.prompt_builder import generate_dynamic_question_block
-        from src.utils.gpt_tools import call_gpt
-
-        dynamic_prompt = generate_dynamic_question_block(
-            user_profile=st.session_state.user_intro_survey,
-            current_q=current_q,
-            user_answer=user_answer if 'user_answer' in locals() else ""
-        )
-
-        try:
-            gpt_response = call_gpt(dynamic_prompt)
-            parts = gpt_response.split("【說明】")
-            question_title = parts[0].replace("【題目】", "").strip()
-            question_intro = parts[1].strip()
-        except Exception:
-            question_title = current_q.get("text", "")
-            question_intro = current_q.get("question_note", "")
-
-        # ✨ 儲存進 session_state，避免重跑
-        st.session_state[cache_key] = {
-            "title": question_title,
-            "intro": question_intro
-        }
-    else:
-        # ✅ 使用快取結果
-        question_title = st.session_state[cache_key]["title"]
-        question_intro = st.session_state[cache_key]["intro"]
-
-    # === 顯示題目與說明 ===
-    st.markdown("### 📝 題目")
-    st.markdown(f"<p style='font-size:18px'><strong>{question_title}</strong></p>", unsafe_allow_html=True)
-
-    st.markdown("#### 🗒️ 題目說明")
-    st.markdown(f"<div style='font-size:16px'>{question_intro}</div>", unsafe_allow_html=True)
-
-
-    # 顯示選項們
-    options = current_q["options"]
-    option_notes = current_q.get("option_notes", {})
-
-    formatted_options = []
-    for opt in options:
-        note = option_notes.get(opt, "")
-        html = f"{opt}：{note}"
-        formatted_options.append(html)
-
-    selected = []
-
-    if current_q["type"] == "single":
-        selected_html = st.radio("可選擇：", formatted_options, format_func=lambda x: x, index=0, key="radio_options", label_visibility="visible")
-        if selected_html:
-            selected = [options[formatted_options.index(selected_html)]]
-    else:
-        st.markdown("可複選：")
-        for i, html in enumerate(formatted_options):
-            opt_key = options[i]
-            if st.checkbox(html, key=opt_key):
-                selected.append(opt_key)
-    # ✅ 若允許使用者自訂答案
-    custom_input = ""
-    if current_q.get("allow_custom_answer", False):
-        custom_input = st.text_input("請輸入您的想法或做法...", key="custom_input")
-
-import streamlit as st
-from src.utils.prompt_builder import build_learning_prompt, generate_user_friendly_prompt
-from src.utils.gpt_tools import call_gpt
-
-
-# 確保必要的變數已定義
-if "user_intro_survey" not in st.session_state:
-    st.session_state.user_intro_survey = {"background": "未知"}
-
 # 假設你已經從 `context_tracker` 取得上一題摘要（例如 get_previous_summary(current_q['id'])）
-previous_summary = all_summaries(current_q['id'])
+previous_summary = get_previous_summary(current_q["id"])  # ✅ 正確
 
-friendly_intro = generate_user_friendly_prompt(
-    current_q,
-    st.session_state.user_intro_survey,
-    previous_summary=previous_summary,   # 這是上一題的小結
-    rag_context=""                        # 這是 RAG 補充知識（若已自動查詢則傳空字串）
-)
+# GPT AI 顧問引導語區塊
+st.markdown('<div class="ai-intro-block">', unsafe_allow_html=True)
+st.markdown("#### 💬 AI 淨零顧問引導")
 
-st.markdown(f"**{friendly_intro}**")
+trigger = st.session_state.get("_trigger_all_sections", 0)
+cache_key = f"friendly_intro_{current_q['id']}_{trigger}"
+tone = st.session_state.get("preferred_tone", "gentle")
 
-
-# 後續的 GPT 教學邏輯
-if custom_input:
-    selected = [custom_input] if current_q["type"] == "single" else selected + [custom_input]
-
-user_profile = {
-    "user_name": st.session_state.get("user_name", ""),
-    "company_name": st.session_state.get("company_name", ""),
-    "industry": st.session_state.get("industry", ""),
-    **st.session_state.get("user_intro_survey", {})
-}
-
-# 🔍 根據目前題目 ID 找出對應的使用者作答
-qid = current_q["id"]
-user_answer = next(
-    (resp["user_response"] for resp in session.responses if resp["question_id"] == qid),
-    None
-)
-
-if not user_answer:
-    # 若使用者尚未回答該題，就使用當前勾選或輸入值（避免錯誤）
-    if selected:
-        user_answer = selected if current_q["type"] == "multiple" else selected[0]
-    if custom_input:
-        if current_q["type"] == "multiple":
-            user_answer = (user_answer or []) + [custom_input]
-        else:
-            user_answer = custom_input
-
-
-# 構建 prompt
-prompt_text = build_learning_prompt(user_profile, current_q, user_answer)
-
-# 按鈕觸發 GPT 回應（補充第一段的按鈕）
-if st.button("🤖 由 ESG 小幫手產生教學引導", key="btn_gpt_teaching"):
-    with st.chat_message("assistant"):
-        with st.spinner("AI 教學中，請稍候..."):  # 使用第二段的提示訊息
-            try:
-                gpt_reply = call_gpt(prompt_text, temperature=0.7)
-                st.markdown(gpt_reply)
-                add_turn(current_q["id"], prompt_text, gpt_reply)
-            except Exception as e:
-                st.error(f"⚠️ GPT 回覆失敗：{str(e)}")
-
-    # 導航按鈕區塊
-    st.markdown("---")
-    st.markdown("#### 🧭 請確認您的作答，然後點擊「下一題」或返回修改：")
-    col1, col2 = st.columns([1, 1])
-
-    with col1:
-        if st.button("⬅️ 上一題", key="btn_prev", use_container_width=True):
-            session.go_back()
-            st.rerun()
-
-    with col2:
-        if st.button("➡️ 下一題（提交答案）", key="btn_next", use_container_width=True):
-            if current_q["type"] == "single":
-                answer_payload = selected[0] if selected else ""
-            else:
-                answer_payload = selected
-
-            if custom_input:
-                answer_payload = [custom_input] if current_q["type"] == "single" else selected + [custom_input]
-
-            if not answer_payload:
-                st.warning("⚠️ 請先選擇或填寫一個答案後再繼續")
-                st.stop()
-
-            result = session.submit_response(answer_payload)
-            add_context_entry(current_q["id"], answer_payload, current_q["text"])
-            save_to_json(session)
-
-            if "error" in result:
-                st.error(result["error"])
-            else:
-                st.success("✅ 已提交，即將跳轉至下一題")
-                st.rerun()
-
-    st.markdown("  \n")
-    # === GPT 對話式問答區塊 ===
-    st.divider()
-    st.markdown("#### 🤖 淨零小幫手（測試階段以五題為限）")
-
-    # 初始化對話記憶
-    if "qa_threads" not in st.session_state:
-        st.session_state.qa_threads = {}
-
-    chat_id = current_q["id"]
-    from sessions.context_tracker import get_conversation, add_turn
-    from src.utils.gpt_tools import call_gpt
-
-    # 顯示歷史對話
-    for msg in get_conversation(chat_id):
-        if "user" in msg:
-            with st.chat_message("user"):
-                st.markdown(msg["user"])
-        if "gpt" in msg:
-            with st.chat_message("assistant"):
-                st.markdown(msg["gpt"])
-
-
-
-    # 定義點按按鈕後自動送出的處理流程
-    def auto_submit_prompt(selected_prompt):
-        from src.utils.gpt_tools import call_gpt
-        from sessions.context_tracker import add_turn, get_conversation
-
-        with st.chat_message("user"):
-            st.markdown(selected_prompt)
-        with st.chat_message("assistant"):
-            with st.spinner("AI 回覆中..."):
-                context_text = f"{current_q['text']}\n{current_q.get('learning_goal', '')}"
-                reply = call_gpt(
-                prompt=selected_prompt,
-                question_text=current_q["text"],
-                learning_goal=current_q.get("learning_goal", ""),
-                chat_history=get_conversation(current_q["id"]),
-                industry=st.session_state.get("industry", "")
+if cache_key not in st.session_state:
+    with st.spinner("🔄 正在產生顧問引導中..."):
+        try:
+            from src.utils.prompt_builder import generate_user_friendly_prompt
+            st.session_state[cache_key] = generate_user_friendly_prompt(
+                current_q=current_q,
+                user_profile=st.session_state["user_intro_survey"],
+                tone=tone
             )
+        except Exception as e:
+            st.session_state[cache_key] = f"⚠️ 無法產生引導語：{str(e)}"
 
-                st.markdown(reply)
-                add_turn(current_q["id"], selected_prompt, reply)
-
-    # 💡 自動從題目帶入建議提問（支援自然語句格式）
-    suggested_prompts_raw = current_q.get("follow_up", "")
-    suggested_prompts = [
-        s.strip() + "？"
-        for s in suggested_prompts_raw.split("？")
-        if s.strip()
-]
-
-    # 建議提問按鈕區
-    st.markdown("#### 💬 想深入了解？可點選以下問題繼續提問：")
-    render_suggested_questions(suggested_prompts, auto_submit_prompt)
+st.markdown(f"**{st.session_state[cache_key]}**", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 
+# ✅ 不論如何都只顯示快取內容，不重跑 GPT
 
 
-    # 下方輸入框
-    if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 顧問 AI"):
-        with st.chat_message("user"):
-            st.markdown(prompt)
+st.markdown("---")
+st.markdown('<div class="question-block">', unsafe_allow_html=True)
+render_questionnaire()
+st.markdown('</div>', unsafe_allow_html=True)
 
-        with st.chat_message("assistant"):
-            with st.spinner("AI 回覆中..."):
-                try:
-                    reply = call_gpt(prompt)  
-                    st.markdown(reply)
-                    add_turn(chat_id, prompt, reply)
-                except Exception as e:
-                    st.error(f"⚠️ AI 回覆失敗：{str(e)}")
+st.markdown('<div class="chat-interaction-block">', unsafe_allow_html=True)
+render_chatbox()
+st.markdown('</div>', unsafe_allow_html=True)
 
- 
-else:  # 確保這裡的 else 與上方 if 對齊
+
+
+# === 如果所有題目都完成，才顯示完成提示 ===
+if session.current_index >= len(session.question_set):
     st.success("🎉 您已完成本階段問卷！")
+
+    # 👉 此處之後可加入「診斷報告、進階問卷切換」的功能（下一步處理）
+    # ...
+ # ✅ 產生診斷摘要報告
     baseline = BaselineManager("data/baselines/company_abc.json").get_baseline()
     summary = session.get_summary(company_baseline=baseline)
     summary["user_name"] = st.session_state.get("user_name")
@@ -566,100 +386,50 @@ else:  # 確保這裡的 else 與上方 if 對齊
 
     st.markdown("## 📄 診斷摘要報告")
     st.markdown(f"""
-```
 {report.generate_text_report()}
-```
+
 """)
 
+    # ✅ 題目建議
     st.markdown("## 💡 題目建議與改善方向")
     for fb in feedback_mgr.generate_feedback():
         st.markdown(f"- **{fb['question_id']} 建議：** {fb['feedback']}")
 
+    # ✅ 總體建議
     st.markdown("## 📌 總體建議")
     st.markdown(feedback_mgr.generate_overall_feedback())
 
+    # ✅ 儲存結果
     save_to_json(session)
     save_to_sqlite(session)
 
-    if st.session_state.stage == "basic":
+    # ✅ 進階問卷切換（限 basic 階段）
+    if st.session_state.stage == "basic":   
         st.divider()
-        st.subheader("🚀 您已完成初階診斷，是否進入進階問卷？")
-        if st.button("👉 進入進階問卷"):
-            st.session_state.stage = "advanced"
-            new_qset = load_questions(st.session_state.industry, "advanced", skip_common=True)
-            st.session_state.session = AnswerSession(user_id=user_id, question_set=new_qset)
-            st.rerun()
+        st.subheader("🚀 您已完成初階診斷")
 
-# 向量處理（暫保留）
-embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+        st.markdown("請選擇下一步：")
+        col1, col2 = st.columns(2)
 
+        with col1:
+            if st.button("📄 立即產出報告", key="btn_generate_report_only"):
+                st.toast("✅ 將根據初階問卷產出報告。")
 
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=400,
-    chunk_overlap=50,
-    separators=["\n\n", "\n", "。", ".", "!", "?", "！", "？"],
-    keep_separator=True
-)
+        with col2:
+            if st.button("📈 進入進階問卷", key="btn_continue_advanced"):
+                st.session_state.stage = "advanced"
 
-base_dir = Path("data/db_pdf_data")
+                # 載入 advanced 題目（包含 intermediate）
+                new_qset = load_questions(
+                    industry=st.session_state.industry,
+                    stage="advanced",
+                    skip_common=True
+                )
 
-class ChunkMetadata:
-    def __init__(self, pdf_path: Path, page: int, section: int, base_dir: Path):
-        self.chunk_id = f"{pdf_path.stem}-p{page}-s{section}"
-        self.source = pdf_path.name
-        self.path = str(pdf_path.parent.relative_to(base_dir))
-        self.main_topic = ""
-        self.industry = ""
-        self.region = ""
-        self.page = page
-        self.title = ""
-        self.language = ""
+                # 移除已完成的初階題
+                answered_ids = {r["question_id"] for r in session.responses}
+                new_qset = [q for q in new_qset if q["id"] not in answered_ids]
 
-class VectorStore:
-    def __init__(self, dimension: int = 384, model_name: str = "all-MiniLM-L6-v2"):
-        self.dimension = dimension
-        self.model_name = model_name
-        self.index = faiss.IndexFlatIP(self.dimension)
-        self.metadata: List[Dict] = []
-        self.embed_model = OpenAIEmbeddings(model_name)
-
-    def add_vectors(self, vectors, metadata_list):
-        self.index.add(vectors)
-        self.metadata.extend(metadata_list)
-
-    def save(self, output_dir: Path):
-        faiss.write_index(self.index, str(output_dir / 'faiss_index.index'))
-        with open(output_dir / 'chunk_metadata.json', 'w') as f:
-            json.dump(self.metadata, f, indent=2)
-
-# 📄 app.py
-
-import streamlit as st
-from src.loaders.question_loader import load_questions  # 正確引用此函式
-
-def show_learning_page():
-    # 讀取 session_state 中的階段與產業資料
-    stage = st.session_state.get("stage", "basic")  # 默認為初階
-    industry = st.session_state.get("industry", "餐飲業")  # 默認為餐飲業
-
-    # 根據階段載入題目
-    questions = load_questions(industry=industry, stage=stage)
-
-    st.markdown("## 🎯 開始您的 ESG 學習之旅")
-    st.markdown("""
-    歡迎來到學習頁面！這裡是為您量身設計的學習路徑，讓我們開始探索如何進行碳盤查、了解 ESG 的核心概念，並幫助您與企業合作減碳。
-    """)
-
-    # 顯示學習內容
-    st.markdown("### 學習模組 1: 碳盤查概述")
-    st.markdown("在這個模組中，您將學到如何進行碳盤查、什麼是碳足跡...")
-
-    # 顯示題目，依照 `stage` 顯示對應題目
-    st.markdown("### 這是您的問卷題目：")
-    for question in questions:
-        st.markdown(f"**{question['text']}**")  # 顯示問題
-        for option in question["options"]:  # 顯示選項
-            st.markdown(f"- {option}")
-
-import streamlit as st
-
+                # 建立新 session 並跳轉
+                st.session_state.session = AnswerSession(user_id=user_id, question_set=new_qset)
+                st.rerun()

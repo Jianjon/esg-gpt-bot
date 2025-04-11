@@ -5,8 +5,8 @@
   "responses": [
     {
       "question_id": "B001",
-      "question_text": "餐廳的規模？",
-      "user_response": "1-10人",
+      "question_text": "公司規模如何？（員工數、車隊規模、營運據點數量）",
+      "user_response": "11-50人",
       "question_type": "single",
       "topic": "邊界設定與組織資訊"
     }

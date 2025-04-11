@@ -2,5 +2,13 @@
   "user_id": "TISDM_Chien,Chung Chang",
   "stage": "survey",
   "total_questions": 34,
-  "responses": []
+  "responses": [
+    {
+      "question_id": "B001",
+      "question_text": "餐廳的規模？",
+      "user_response": "11-50人",
+      "question_type": "single",
+      "topic": "邊界設定與組織資訊"
+    }
+  ]
 }

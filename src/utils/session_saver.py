@@ -2,32 +2,52 @@ import os
 import json
 import sqlite3
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
 
-def get_json_path(user_id):
+from sessions.answer_session import AnswerSession
+
+
+# ========= 路徑處理 =========
+
+def get_json_path(user_id: str) -> str:
     os.makedirs("data/responses", exist_ok=True)
     return f"data/responses/{user_id}.json"
 
-def save_to_json(session):
+
+def get_sqlite_path() -> str:
+    os.makedirs("data/sqlite", exist_ok=True)
+    return "data/sqlite/sessions.db"
+
+
+# ========= JSON 儲存與載入 =========
+
+def save_to_json(session: AnswerSession) -> None:
+    """將作答紀錄儲存為 JSON"""
     path = get_json_path(session.user_id)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(session.get_summary(), f, ensure_ascii=False, indent=2)
 
-def load_from_json(user_id, question_set):
+
+def load_from_json(user_id: str, question_set: list) -> Optional[AnswerSession]:
+    """從 JSON 還原作答紀錄，若無檔案則回傳 None"""
     path = get_json_path(user_id)
     if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        from sessions.answer_session import AnswerSession
-        session = AnswerSession(user_id=user_id, question_set=question_set, stage=data.get("stage", "basic"))
-        session.responses = data.get("responses", [])
-        session.current_index = len(session.responses)
-        return session
+        with path.open("r", encoding="utf-8") as f:
+          data = json.load(f)
+        return AnswerSession.from_dict(data, question_set)
     return None
 
-def save_to_sqlite(session):
-    os.makedirs("data/sqlite", exist_ok=True)
-    conn = sqlite3.connect("data/sqlite/sessions.db")
+
+# ========= SQLite 儲存 =========
+
+def save_to_sqlite(session: AnswerSession) -> None:
+    """將作答紀錄儲存至 SQLite（可供後續查詢與分析）"""
+    db_path = get_sqlite_path()
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
+
+    # 建立資料表
     c.execute("""
         CREATE TABLE IF NOT EXISTS responses (
             user_id TEXT,
@@ -38,7 +58,10 @@ def save_to_sqlite(session):
             timestamp TEXT
         )
     """)
+
     now = datetime.now().isoformat()
+
+    # 寫入每筆回覆
     for r in session.responses:
         c.execute("""
             INSERT INTO responses (user_id, question_id, response, topic, question_type, timestamp)
@@ -51,7 +74,11 @@ def save_to_sqlite(session):
             r.get("question_type", "unknown"),
             now
         ))
+
     conn.commit()
     conn.close()
 
-# 可擴充更多欄位與回報架構
+def get_json_path(user_id: str) -> Path:
+    path = Path("data/responses")
+    path.mkdir(parents=True, exist_ok=True)
+    return path / f"{user_id}.json"

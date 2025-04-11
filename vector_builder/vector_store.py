@@ -4,7 +4,8 @@ import logging
 from typing import List, Dict
 import numpy as np
 import faiss
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
 
 
 class VectorStore:

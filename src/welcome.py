@@ -14,10 +14,10 @@ def show_welcome_page():
     """)
 
     # ========== 基本資訊區塊 ==========
-    st.markdown("### 📜 請填寫您的基本資訊（必填）")
+    st.markdown("#### 📜 請填寫您的基本資訊（必填）")
     with st.form("form_basic_info"):
         name = st.text_input("👤 您的姓名")
-        email = st.text_input("📧 電子郵件（可選）")
+        email = st.text_input("📧 電子郵件")
         company = st.text_input("🏢 公司名稱")
         industry = st.selectbox("🏭 所屬產業類別", [
             "餐飲業", "旅宿業", "零售業", "小型製造業", "物流業", "辦公室服務業"
@@ -176,9 +176,9 @@ def show_welcome_page():
             submit = st.form_submit_button("🚀 開始 ESG 教學診斷")
 
             if submit:
-                st.session_state.user_intro_survey = survey_data
-                st.session_state.stage = "advanced" if stage_choice == "進階問卷（含全部題目）" else "basic"
-                st.session_state.intro_survey_submitted = True
+                st.session_state["user_intro_survey"] = survey_data
+                st.session_state["stage"] = "advanced" if stage_choice == "進階問卷（含全部題目）" else "basic"
+                st.session_state["intro_survey_submitted"] = True
                 st.success("✅ 問卷完成，即將進入診斷主流程")
                 st.session_state["go_to_main"] = True
                 st.rerun()
