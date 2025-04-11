@@ -7,12 +7,17 @@ from streamlit import rerun
 
 
 @st.fragment
-def render_questionnaire():
+def render_questionnaire_fragment():
+    if "session" not in st.session_state:
+        st.warning("⚠️ 尚未載入問卷資料，請重新載入或回到歡迎頁。")
+        return
+
     session = st.session_state.session
     current_q = session.get_current_question()
     if not current_q:
         st.success("🎉 您已完成本階段問卷！")
         return
+
 
     # === 題目標題與說明（快取處理）===
     cache_key = f"gpt_question_intro_{current_q['id']}"

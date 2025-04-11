@@ -12,7 +12,6 @@ TONE_STYLE_MAP = {
     "creative": "語氣請啟發性、跳脫傳統，鼓勵使用者從不同視角思考。"
 }
 
-
 def build_learning_prompt(
     tone: str = "gentle",
     previous_summary: str = "",
@@ -20,53 +19,76 @@ def build_learning_prompt(
     user_profile: dict = None
 ) -> str:
     """
-    簡短顧問式引導（第一題為操作說明，其餘題則為前情摘要＋學習目標提示）
-    適合放在選項上方，快速協助進入情境。
+    題目前導論提示（第一題為操作引導，其餘為總結上題與學習目標說明），
+    可根據使用者角色調整語氣與內容，幫助他理解題目設計邏輯與參與方式。
     """
+
+    from src.utils.gpt_tools import call_gpt
+    import json
 
     style_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
     user_profile = user_profile or {}
     industry = user_profile.get("industry", "某產業")
+    role = user_profile.get("role", "企業內部人員")
     profile_json = json.dumps(user_profile, ensure_ascii=False, indent=2)
 
     if is_first_question:
         prompt = f"""
-你是一位 ESG 顧問，正在協助使用者開始一份 ESG 學習型問卷。
+你是一位資深 ESG 顧問，正在逐題協助企業使用者理解 ESG 問卷設計的學習邏輯與實務意涵。
+請根據下列背景資訊，{style_instruction}
 
-請以「{style_instruction}」語氣說明這份問卷的目的與操作方式，
-讓使用者放鬆進入狀況。
+🧑‍💼【使用者角色】：{role}
+請根據角色調整說明角度：
+- 若是「企業主」，請說明此問卷將幫助他理解風險、因應法規與市場
+- 若是「永續專責人員」，請強調如何執行這些流程、未來如何應用結果
+- 若是「行政或財務人員」，請強調如何協助資料收集與配合工作
 
-請參考以下使用者背景：
+📝【使用者背景】
 {profile_json}
 
-✅ 引導重點：
-- 告訴這是用來學習與對話的問卷
-- 可以選擇、跳過或自填
-- 回答的目的是幫助顧問後續提供診斷與建議
+✅ 回應格式要求：
+🧠【格式建議】請根據內容靈活選擇適合的呈現方式：
+- 若為比較型、條件型、對應邏輯 → 可使用表格呈現
+- 若為清單、操作步驟、注意事項 → 請使用條列清單（每列加上 **粗體重點**）
+- 若為說明性內容 → 請使用 1～2 段自然語句解釋背景與建議
+- 若有需要，也可在適當位置加入表情符號（如 ✅、📌、📝）輔助視覺導引
 
-請產出一段引導語，最後附上三點提醒（使用條列式，粗體關鍵詞）。
+⚠️ 不要強制使用格式，請自行判斷哪種結構最利於閱讀與理解
+請直接產出這段「引導開場說明」，不要有標題，不要補充說明。
 """
+
     else:
         prompt = f"""
-你是一位 ESG 顧問，正在幫助企業主逐步理解 ESG 問卷的學習邏輯與問題意圖。
+你是一位 ESG 顧問，正在逐題協助使用者理解 ESG 問卷的設計邏輯與學習目的。
 
-請根據「{style_instruction}」語氣，撰寫一段簡潔引導段落，協助使用者銜接上一題總結並了解這題的學習目的。
+這題為第二題起，請你根據「上一題摘要 + 本題目標 + 使用者角色」，給出一段自然的導論說明，引導使用者投入思考。
 
-請參考以下背景與資訊：
+🧑‍💼【使用者角色】：{role}
+請根據角色調整語氣與內容：
+- 「企業主」→ 決策邏輯與實務意義
+- 「永續專責人員」→ 執行方法與應用情境
+- 「行政或財務人員」→ 配合責任與資料位置
 
-🏢【使用者產業】：{industry}
+🏢【產業】：{industry}
 📘【使用者背景】：
 {profile_json}
 
 📌【上一題摘要】
-{previous_summary or '（無摘要）'}
+{previous_summary or '（尚無摘要）'}
 
+✅ 回應格式要求：
+🧠【格式建議】請根據內容靈活選擇適合的呈現方式：
+- 若為比較型、條件型、對應邏輯 → 可使用表格呈現
+- 若為清單、操作步驟、注意事項 → 請使用條列清單（每列加上 **粗體重點**）
+- 若為說明性內容 → 請使用 1～2 段自然語句解釋背景與建議
+- 若有需要，也可在適當位置加入表情符號（如 ✅、📌、📝）輔助視覺導引
 
-請產出一段 80～100 字內的顧問式說明，最後加入 2～3 點條列式提示（每列加粗關鍵名詞）。
+⚠️ 不要強制使用格式，請自行判斷哪種結構最利於閱讀與理解
+請直接產出這段「引導開場說明」，不要有標題，不要補充說明。
 """
 
-    from src.utils.gpt_tools import call_gpt
     return call_gpt(prompt).strip()
+
 
 
 def generate_user_friendly_prompt(
@@ -76,13 +98,16 @@ def generate_user_friendly_prompt(
     tone: str = "gentle"
 ) -> str:
     """
-    根據學習目標與使用者情境，產出一段自然口語、顧問式的引導語，避免重複題目內容。
+    根據學習目標與使用者角色與情境，產出一段自然口語、顧問式的引導語。
     """
+    import json
+    from src.utils.gpt_tools import call_gpt
 
     learning_goal = current_q.get("learning_goal", "")
     topic = current_q.get("topic", "")
     user_profile_json = json.dumps(user_profile, ensure_ascii=False, indent=2)
     industry = user_profile.get("industry", "某產業")
+    role = user_profile.get("role", "企業內部人員")
 
     TONE_STYLE_MAP = {
         "gentle": "語氣親切自然，像一位熟悉企業場景的顧問，與中小企業主溝通。",
@@ -92,13 +117,31 @@ def generate_user_friendly_prompt(
     style_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
 
     prompt = f"""
-你是一位資深 ESG 顧問，熟悉 ISO 14064-1 標準，正在協助企業主進行 ESG 問卷的學習與思考。
+你是一位資深 ESG 顧問，熟悉 ISO 14064-1 標準，正在協助企業進行 ESG 問卷引導。
 
-請依據「學習目標」來撰寫一段顧問式引導文字，幫助使用者理解該主題的意義、做法或挑戰。避免重複題目內容，並結合使用者背景情境。
+請依據「學習目標」，結合使用者背景與角色，撰寫一段引導式說明，協助使用者理解本題的核心概念與挑戰。
 
-✏️ 回應格式要求：
-- 引導語須自然口語、脈絡清楚，讓使用者快速理解本題背景與方向
-- 結尾請加入 2～3 項條列提示，每項須加上 **粗體關鍵名詞**
+🎯【目的】
+- 幫助使用者理解：{topic}這一題在問什麼？為什麼重要？
+- 引導使用者思考如何針對自己公司來作答
+- 語氣應該自然像對話，**整合說明與提問**為一段口語敘述
+
+
+🧑‍💼【使用者角色】：{role}
+請根據這個角色調整語氣與內容：
+- 若是「企業主」，請從決策與經營角度說明意義與風險
+- 若是「永續專責人員」，請著重在執行流程與可行做法
+- 若是「行政或財務人員」，請強調配合責任與資料來源
+- 若無法辨識角色，請以中性實務方式說明
+
+🧠【格式建議】請根據內容靈活選擇適合的呈現方式：
+- 若為比較型、條件型、對應邏輯 → 可使用表格呈現
+- 若為清單、操作步驟、注意事項 → 請使用條列清單
+- 若為說明性內容 → 請使用 1～2 段自然語句解釋背景與建議
+- 若有需要，也可在適當位置加入表情符號（如 ✅、📌、📝）輔助視覺導引
+
+⚠️ 不要強制使用格式，請自行判斷哪種結構最利於閱讀與理解
+，每項加上 **粗體關鍵詞**
 - 回應風格請符合下列描述：{style_instruction}
 
 🎯【學習目標】
@@ -106,65 +149,86 @@ def generate_user_friendly_prompt(
 
 🏢【使用者背景】
 行業：{industry}
-問卷回覆摘要如下：
+完整資料如下：
 {user_profile_json}
 
 📚【補充資料（選填）】
 {rag_context or '（如無補充）'}
 
-請生成一段貼近使用者、聚焦學習目標的專業引導語，結尾加入重點提示。
+📏【長度建議】
+- 本段回應請控制在 **180～250 字**，足夠清楚教學但不宜過長。
+- 可使用條列或表格輔助視覺，但不需撐長篇幅。
+
+請聚焦於該題的「學習目標」進行引導說明，幫助使用者了解該主題的實務意義與回答方向。結尾加入條列提示。
 """
 
-    from src.utils.gpt_tools import call_gpt
     return call_gpt(prompt).strip()
 
+def generate_dynamic_question_block(
+    user_profile: dict,
+    current_q: dict,
+    user_answer: str = "",
+    tone: str = "gentle"
+) -> str:
+    import json
+    from src.utils.gpt_tools import call_gpt
 
-def generate_dynamic_question_block(user_profile: dict, current_q: dict, user_answer: str = "", tone: str = "gentle") -> str:
     tone_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
-
     question_text = current_q.get("question_text", "")
     question_note = current_q.get("question_note", "")
     learning_goal = current_q.get("learning_goal", "")
+    role = user_profile.get("role", "企業內部人員")
+    profile_json = json.dumps(user_profile, ensure_ascii=False, indent=2)
 
-    return f"""
-你是一位碳盤查顧問，熟悉 ISO 14064-1 標準，正在協助使用者完成一份學習型問卷。
+    prompt = f"""
+你是一位資深 ESG 顧問，熟悉 ISO 14064-1 標準與中小企業實務，正在協助企業主完成 ESG 學習型問卷。
 
-請根據使用者背景、前一題的回答、目前題目的內容與學習目標，
-幫我改寫本題的「提問方式」與「說明引導語」。
-所設計的題目內容是要讓使用者選擇出最符合自己公司的選項。
-說明題目時要讓用戶感到是針對他的背景與需求所設計的內容，
-而不是單純的題目及題目說明。
+請你根據以下資訊，**重新撰寫本題的引導語句**，用自然、情境化{tone_instruction}的語氣來呈現問題，讓使用者覺得這題是「為他公司量身設計」。
 
-⚠️ 請不要直接使用原始題目或說明中的句子，請改寫成貼近企業場景的提問與說明。
-語氣自然、口語化，像是與企業主對話。
-【語氣風格】
-{tone_instruction}
+---
 
-✏️【格式要求】
-1. 題目：15～30 字，精簡口語
-2. 說明：50～100 字，具教育性，引導思考
+✅ **撰寫目的：**
+- 這一段文字是用來**教育使用者**了解問題背後的意義
+- 同時要**幫助他判斷哪一個選項最符合自己公司的狀況**
+- 請將「說明」與「提問」**整合為一段文字**，語氣像顧問在與客戶對談
+
+---
+
+🎯【學習目標】
+{learning_goal or "（本題尚未提供）"}
+
+👤【使用者角色】：{role}
+請根據角色調整內容風格：
+- 若是「企業主」，以決策角度說明影響與必要性
+- 若是「永續專責人員」，聚焦在如何執行與資料處理
+- 若是「行政／財務人員」，強調配合重點與實際資料來源
+- 角色未知時，以實務建議為主
 
 📘【使用者背景】
-{json.dumps(user_profile, ensure_ascii=False, indent=2)}
+{profile_json}
 
-🧾【前一題的回答】
+🧾【前一題作答】
 {user_answer if user_answer else "（尚無回覆）"}
 
-📝【題目內容與說明（僅供參考）】
+📝【本題內容（供參考）】
 【題目】{question_text}
 【說明】{question_note}
 
-🎯【學習目標】
-{learning_goal}
+---
 
-請輸出以下格式：
-【題目】
-（改寫後題目）
+✏️【撰寫格式要求】
+- 整合「說明」與「問題」為**一段完整敘述**
+- 使用**口語化、顧問式語氣**
+- 在文字中加入至少**2 個以上黑體關鍵詞**
+- 不要出現「題目：」「說明：」等標題
+- 不可直接照抄原始題目或說明
 
-【說明】
-（口語化說明）
-"""
+---
 
+📤 請直接輸出這段「整合式引導語」（不要加任何前後說明）
+    """
+
+    return call_gpt(prompt).strip()
 
 
 def generate_option_notes(current_q: dict, tone: str = "說明清楚"):
