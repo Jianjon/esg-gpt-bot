@@ -1,8 +1,15 @@
+# src/components/questionnaire_fragment.py
+
 import streamlit as st
-from src.utils.prompt_builder import generate_dynamic_question_block, generate_option_notes
+from src.utils.prompt_builder import (
+    build_learning_prompt,
+    generate_option_notes,
+    generate_user_friendly_prompt,
+)
 from src.utils.gpt_tools import call_gpt
-from src.sessions.context_tracker import add_context_entry
+from src.utils.question_utils import get_previous_summary
 from src.utils.session_saver import save_to_json
+from src.managers.guided_rag import GuidedRAG
 from streamlit import rerun
 
 
@@ -18,42 +25,72 @@ def render_questionnaire_fragment():
         st.success("🎉 您已完成本階段問卷！")
         return
 
-    user_profile = st.session_state.get("user_intro_survey", {})
+    # ✅ 新增這段：初始化每題的 ready flag，預設為 False（還沒準備好）
     qid = current_q["id"]
+    ready_flag = f"q{qid}_ready"
+    if ready_flag not in st.session_state:
+        st.session_state[ready_flag] = False
 
-    # === 題目導論快取 ===
-    intro_key = f"gpt_question_intro_{qid}"
-    if intro_key not in st.session_state:
+    user_profile = st.session_state.get("user_intro_survey", {})
+    tone = st.session_state.get("preferred_tone", "gentle")
+    current_index = session.current_index
+
+    # === 第一段：顧問導論 + 學習目標 + 準備按鈕 ===
+    if not st.session_state.get(ready_flag, False):
+        st.markdown("#### 💬 AI 淨零顧問引導")
         try:
-            prompt = generate_dynamic_question_block(
-                user_profile=user_profile,
+            summary = get_previous_summary(qid)
+            is_first = current_index == 0
+            intro_text = build_learning_prompt(
+                tone=tone,
+                previous_summary=summary,
+                is_first_question=is_first,
                 current_q=current_q,
-                user_answer=""
+                user_profile=user_profile
             )
-            gpt_response = call_gpt(prompt)
+
+            st.markdown(f"""<div class="ai-intro-box">{intro_text}</div>""", unsafe_allow_html=True)
         except Exception as e:
-            gpt_response = f"⚠️ 無法產生題目導論：{e}"
-        st.session_state[intro_key] = gpt_response
+            st.error(f"⚠️ 無法產生導論語句：{e}")
 
-    st.markdown("### 📝 題目引導說明")
-    st.markdown(st.session_state[intro_key])
-
-    # === 選項說明補充（如果原本的註解是空的）===
-    option_notes = current_q.get("option_notes", {})
-    if all(not note for note in option_notes.values()):
+        st.markdown("#### 🎯 本題學習目標說明")
         try:
-            opt_prompt = generate_option_notes(current_q)
-            notes_response = call_gpt(opt_prompt)
-            lines = notes_response.splitlines()
-            new_notes = {opt: line.strip("- ").strip() for opt, line in zip(current_q["options"], lines)}
-            current_q["option_notes"] = new_notes
+            rag = GuidedRAG(vector_path="data/vector_output/")
+            rag_context = rag.query(current_q.get("learning_goal") or current_q.get("topic", ""))
+            learning_prompt = generate_user_friendly_prompt(
+                current_q=current_q,
+                user_profile=user_profile,
+                rag_context=rag_context,
+                tone=tone
+            )
+            st.markdown(f"""<div class="ai-intro-box">{learning_prompt}</div>""", unsafe_allow_html=True)
         except Exception as e:
-            st.warning(f"⚠️ 無法補充選項說明：{e}")
+            st.warning(f"⚠️ 無法補充學習目標說明：{e}")
 
-    # === 顯示選項 ===
+        # === 按下「我準備好了」 ===
+        with st.form(key=f"ready_form_{qid}"):
+            submitted = st.form_submit_button("✅ 我準備好了，開始作答")
+            if submitted:
+                st.session_state[ready_flag] = True
+                rerun()
+        return
+
+    # === 第二段：作答區 ===
+    try:
+        rewritten_notes = generate_option_notes(
+            current_q=current_q,
+            user_profile=user_profile,
+            tone=tone
+        )
+    except Exception as e:
+        rewritten_notes = {
+            opt: f"⚠️ 無法產生說明：{e}" for opt in current_q.get("options", [])
+        }
+
     options = current_q["options"]
-    option_notes = current_q.get("option_notes", {})
-    formatted_options = [f"{opt}：{option_notes.get(opt, '')}" for opt in options]
+    formatted_options = [
+        f"{opt}：{rewritten_notes.get(opt, '')}" for opt in options
+    ]
     selected = []
 
     if current_q["type"] == "single":
@@ -69,7 +106,6 @@ def render_questionnaire_fragment():
             if st.checkbox(html, key=f"checkbox_{qid}_{opt_key}"):
                 selected.append(opt_key)
 
-    # === 自訂答案輸入 ===
     custom_input = ""
     if current_q.get("allow_custom_answer", False):
         custom_input = st.text_input(
@@ -80,7 +116,7 @@ def render_questionnaire_fragment():
         if custom_input:
             selected = [custom_input] if current_q["type"] == "single" else selected + [custom_input]
 
-    # === 導覽按鈕 ===
+    # === 上一題 / 下一題按鈕 ===
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("⬅️ 上一題", key=f"prev_{qid}"):
@@ -96,12 +132,25 @@ def render_questionnaire_fragment():
 
             answer_payload = selected[0] if current_q["type"] == "single" else selected
             result = session.submit_response(answer_payload)
+
             add_context_entry(qid, answer_payload, current_q["text"])
             save_to_json(session)
+
+            try:
+                full_answer = "、".join(answer_payload) if isinstance(answer_payload, list) else answer_payload
+                suggestion = generate_following_action(
+                    current_q=current_q,
+                    user_answer=full_answer,
+                    user_profile=user_profile
+                )
+            except Exception as e:
+                suggestion = f"⚠️ 無法產生建議：{e}"
+
+            st.toast(f"💡 下一步建議：{suggestion}")
 
             if "error" in result:
                 st.error(result["error"])
             else:
-                st.session_state["_trigger_all_sections"] = st.session_state.get("_trigger_all_sections", 0) + 1
+                st.session_state["_trigger_all_sections"] += 1
                 st.success("✅ 已提交，即將跳轉至下一題")
                 rerun()

@@ -5,9 +5,20 @@
   "responses": [
     {
       "question_id": "B001",
-      "question_text": "飯店規模如何？（員工數、分店數）",
-      "user_response": "51-200人",
+      "question_text": "餐廳的規模？",
+      "user_response": "11-50人",
       "question_type": "single",
+      "topic": "邊界設定與組織資訊"
+    },
+    {
+      "question_id": "B002",
+      "question_text": "餐廳的碳盤查範圍包含哪些部分？",
+      "user_response": [
+        "主要營運據點",
+        "餐點製作與廚房",
+        "供應鏈（食材與物流）"
+      ],
+      "question_type": "multiple",
       "topic": "邊界設定與組織資訊"
     }
   ]
