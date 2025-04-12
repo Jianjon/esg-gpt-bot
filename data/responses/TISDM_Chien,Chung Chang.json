@@ -6,7 +6,7 @@
     {
       "question_id": "B001",
       "question_text": "飯店規模如何？（員工數、分店數）",
-      "user_response": "1-10人",
+      "user_response": "51-200人",
       "question_type": "single",
       "topic": "邊界設定與組織資訊"
     }

@@ -48,7 +48,6 @@ from managers.profile_manager import get_user_profile
 from sessions.answer_session import AnswerSession  # 確保這行有匯入
 from src.components.floating_chatbox import render_floating_chatbox
 from src.utils.question_utils import get_previous_summary
-from src.components.questionnaire_block import render_question_block
 
 
 
@@ -239,8 +238,8 @@ if st.session_state.get("jump_to"):
 if "session" in st.session_state:
     session: AnswerSession = st.session_state["session"]
     current_q: dict = session.get_current_question()
-    st.write("📌 current_q debug", current_q)  # ← 加這行
     summary = get_previous_summary(current_q["id"])
+
 else:
     st.error("❗ 尚未初始化問卷 Session，請重新啟動或返回上一頁。")
     st.stop()
@@ -323,13 +322,10 @@ with st.sidebar:
 # 固定主體容器
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
 
+# === 問卷區塊 ===
+from src.components.questionnaire_fragment import render_questionnaire_fragment
+render_questionnaire_fragment()
 
-# ❌ 移除 total_questions
-result = render_question_block(
-    current_q=current_q,
-    current_index=session.current_index,
-    rewritten_question=st.session_state.get(f"q{current_q['id']}_rewritten", None)
-)
 
 # 處理問卷操作
 if result["back"]:
