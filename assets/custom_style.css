@@ -200,13 +200,18 @@ hr {
 /* ========== 區塊樣式重構：清楚分段、留白適當 ========== */
 
 /* 🌱 AI 顧問引導區塊 */
-.ai-intro-block {
-    background-color: #f9f9f9;
-    padding: 24px;
-    border-radius: 12px;
-    border: 1px solid #ddd;
-    margin-bottom: 32px;
-    line-height: 1.6;
+.ai-intro-box {
+    animation: fadeIn 0.4s ease-in-out;
+    padding: 1rem;
+    background-color: #f3fdf4;
+    border-left: 5px solid #4caf50;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* 🧾 問題與選項區塊 */
@@ -238,6 +243,14 @@ hr {
 .section-title::before {
     margin-right: 8px;
 }
+
+h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #2a5d84;
+    font-weight: bold;
+}
+
 
 /* 各段的 emoji 標頭 */
 .ai-intro-block .section-title::before { content: "💬"; }

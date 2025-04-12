@@ -42,6 +42,11 @@ class AnswerSession:
             return True
         return False
 
+    def go_next(self):
+        if self.current_index + 1 < len(self.question_set):
+            self.current_index += 1
+
+
     def go_back(self):
         """回到上一題"""
         if self.current_index > 0:
@@ -112,3 +117,18 @@ class AnswerSession:
                 "match": match
             })
         return comparison
+
+    @classmethod
+    def from_dict(cls, data: dict, question_set: list):
+        """
+        根據儲存的 JSON 資料與原始題目集，還原 AnswerSession 實例。
+        """
+        session = cls(
+            user_id=data.get("user_id", "anonymous"),
+            question_set=question_set,
+            stage=data.get("stage", "survey")
+        )
+        session.current_index = data.get("current_index", 0)
+        session.responses = data.get("responses", [])
+        session.finished = data.get("finished", False)
+        return session

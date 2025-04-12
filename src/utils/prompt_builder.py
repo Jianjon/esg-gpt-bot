@@ -2,7 +2,7 @@
 
 import json
 from src.utils.gpt_tools import call_gpt
-from managers.profile_manager import get_user_profile
+from src.managers.profile_manager import get_user_profile
 
 user_profile = get_user_profile()
 
@@ -16,8 +16,10 @@ def build_learning_prompt(
     tone: str = "gentle",
     previous_summary: str = "",
     is_first_question: bool = False,
-    user_profile: dict = None
+    user_profile: dict = None,
+    current_q: dict = None   # ✅ 加上這個！
 ) -> str:
+
     """
     題目前導論提示（第一題為操作引導，其餘為總結上題與學習目標說明），
     可根據使用者角色調整語氣與內容，幫助他理解題目設計邏輯與參與方式。
@@ -169,6 +171,14 @@ def generate_user_friendly_prompt(
 """
 
     return call_gpt(prompt).strip()
+from src.utils.gpt_tools import call_gpt
+import json
+
+TONE_STYLE_MAP = {
+    "gentle": "語氣請溫和、鼓勵，就像是一位親切的顧問陪伴企業主學習。",
+    "professional": "語氣請專業、邏輯清晰，像在和主管級使用者簡報重點。",
+    "creative": "語氣請啟發性、跳脫傳統，鼓勵使用者從不同視角思考。"
+}
 
 def generate_dynamic_question_block(
     user_profile: dict,
@@ -176,65 +186,84 @@ def generate_dynamic_question_block(
     user_answer: str = "",
     tone: str = "gentle"
 ) -> str:
-    import json
-    from src.utils.gpt_tools import call_gpt
-
     tone_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
-    question_text = current_q.get("question_text", "")
+    question_text = current_q.get("text", "")
     question_note = current_q.get("question_note", "")
     learning_goal = current_q.get("learning_goal", "")
     role = user_profile.get("role", "企業內部人員")
     profile_json = json.dumps(user_profile, ensure_ascii=False)
 
     prompt = f"""
-你是一位資深 ESG 顧問，正在協助「{role}」完成 ESG 問卷。
+你是一位資深 ESG 顧問，熟悉中小企業經營情境與碳盤查實務。
 
-請根據以下資訊，產生一段 **不超過 120 字** 的引導句，用自然、顧問式的語氣，幫助使用者理解這題的意義，並思考自己公司會如何回答。
+請根據以下資訊，撰寫一段約 80～120 字的「顧問式引導語」，幫助使用者了解本題的**選項差異**，並能依據自身情況做出判斷。
 
---- 
+🌱 引導語風格：「{tone_instruction}」
+
+🧑‍💼【使用者角色】：{role}
+📘【使用者背景】：{profile_json}
 📝【題目】：{question_text}
-📘【補充說明】：{question_note}
-👤【用戶背景】：{profile_json}
+📌【補充說明】：{question_note}
+🎯【學習目標】：{learning_goal}
+🗣️【前一題作答】：{user_answer or "（無資料）"}
 
---- 
+✅【內容要求】
+- 不要只是解釋背景，要點出「不同選項的意義差異」
+- 引導使用者思考「自己公司屬於哪一種情境」
+- 語氣自然、口語化，像顧問正在和企業老闆聊天
+- 回應中請加入 **至少 2 個黑體關鍵詞**
+- 不要出現任何「提示語」或「格式說明」
 
-✅【格式要求】：
-- 字數請控制在 60～120 字
-- 口吻自然、情境化，像在和企業主說話
-- 加入至少 2 個**黑體關鍵詞**
-- 請輸出一段「完整、整合式的句子」，不要分段、不要出現任何標題或多餘格式
-
-📤 請直接輸出這段引導語即可。
+📤 請直接輸出這段引導語。
     """
 
     return call_gpt(prompt).strip()
 
 
-def generate_option_notes(current_q: dict, tone: str = "說明清楚") -> str:
+def generate_option_notes(current_q: dict, user_profile: dict = {}, tone: str = "gentle") -> dict:
+    """
+    根據題目選項與使用者背景，請 GPT 幫每個選項補充一段簡短清楚的說明。
+    回傳 dict 格式，例如：{"1-10人": "這是說明", ...}
+    """
     options = current_q.get('options', [])
-    option_text = "\n".join([f"{chr(65+i)}. {opt}" for i, opt in enumerate(options)])
+    question_text = current_q.get('text', '')
+    option_text = "\n".join([f"- {opt}" for opt in options])  # ✅ 不要用 A. B. C. 編號
+
+    profile_hint = json.dumps(user_profile, ensure_ascii=False, indent=2)
 
     prompt = f"""
-你是一位資深碳盤查顧問，熟悉 ISO 14064-1 與企業永續實務。
+你是一位 ESG 顧問，擅長針對題目選項進行簡潔說明。以下是題目內容與使用者背景：
 
-以下是 ESG 問卷中一題的選項內容，請針對每一項補充一句「**簡短清楚的說明（10～25 字內）**」，幫助使用者快速理解。
+【題目內容】
+{question_text}
 
---- 
-📋【選項原文】：
+【選項】
 {option_text}
 
---- 
-✅【撰寫要求】：
-- 每個選項對應一句話說明
-- 請以**親切、明確**語氣撰寫
-- 不用加編號，只輸出說明句
-- 避免術語，讓一般企業主也能看懂
-- 若為規模選項，可描述其在 ESG 上的「特性」或「處理難易度」
+【使用者背景】
+{profile_hint}
 
-📝 請依序列出 A~E 五個說明（若有），例如：
-- 小型規模，碳盤查作業最簡單
-- 多據點管理，需整合數據彙整...
+請你針對每個「選項原文」補充一句 15~25 字的中文說明，
+語氣請符合「{tone}」風格，避免使用術語或模糊字詞。
 
-請直接開始，不要加多餘說明。
+📌 請特別注意：
+- 請直接使用「選項原文」作為 JSON 的 key（不要使用「選項A」或「選項B」）
+- 每個說明請聚焦在該選項的實際情境，簡潔清楚即可
+- 回傳格式如下：
+
+{{
+  "1-10人": "說明內容",
+  "11-50人": "說明內容",
+  ...
+}}
+
+✅ 請直接輸出 JSON 結果，不需要補充說明或其他文字。
     """
-    return prompt.strip()
+
+    response = call_gpt(prompt)
+
+    try:
+        return json.loads(response)
+    except Exception as e:
+        print(f"⚠️ GPT 回傳解析失敗：{e}")
+        return {opt: "" for opt in options}

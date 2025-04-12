@@ -100,7 +100,7 @@ curl -X POST http://localhost:5000/generate_report
 
 | 條件                   | 行為                                   |
 |------------------------|----------------------------------------|
-| 沒有先執行 `/upload`   | `/ask` 或 `/generate_report` 將失敗    |
+| 沒有先執行 `/upload`   | `/ask` 或 `/generate_basic_report` 將失敗    |
 | 每次上傳新文件         | `vectorstore` 會被覆蓋，不保留歷史記憶 |
 
 ---

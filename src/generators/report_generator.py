@@ -8,7 +8,8 @@
 from loaders.question_loader import load_all_question_data
 from loaders.template_loader import load_all_templates
 from src.utils.context_loader import load_user_session
-from src.utils.report_builder import generate_user_background_section
+from src.utils.report_utils import generate_user_background_section
+# from src.utils.report_builder import generate_user_background_section
 
 
 def generate_basic_report(user_answers, question_data, templates, user_info=None):

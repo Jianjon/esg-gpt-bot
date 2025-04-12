@@ -7,11 +7,12 @@ from src.utils.vector_guard import VectorStore
 from src.managers.guided_rag import GuidedRAG
 from src.managers.gpt_rewrite import rewrite_question_to_conversational
 from src.utils.topic_progress import get_topic_progress
-from session_logger import save_to_json
+from utils.session_logger import save_to_json
 import openai
 import os
 from dotenv import load_dotenv
 from src.components.suggest_box import render_suggested_questions
+
 
 # 載入環境變數
 load_dotenv()
@@ -81,7 +82,7 @@ if current_q:
 
     # 初始化 context_tracker 的 chat 記憶
     if "qa_threads" not in st.session_state:
-        st.session_state.qa_threads = {}
+        st.session_state["qa_threads"] = {}
 
     from sessions.context_tracker import get_conversation, add_turn
     from src.utils.gpt_tools import call_gpt

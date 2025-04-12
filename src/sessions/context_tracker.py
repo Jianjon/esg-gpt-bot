@@ -2,6 +2,9 @@ import openai
 from typing import List, Dict
 import streamlit as st
 import os
+from src.managers.profile_manager import get_user_profile
+user_profile = get_user_profile()
+
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -15,7 +18,6 @@ if "guided_chat" not in st.session_state:
 if "guided_turns" not in st.session_state:
     st.session_state["guided_turns"] = 0
 
-# --- Context 紀錄 ---
 def add_context_entry(question_id: str, user_response, question_text: str):
     """
     將使用者的回答與對應問題送進 GPT，生成簡短摘要並儲存
@@ -36,7 +38,10 @@ def add_context_entry(question_id: str, user_response, question_text: str):
         )
         summary = completion["choices"][0]["message"]["content"].strip()
 
-        st.session_state["context_history.append"]({
+        if "context_history" not in st.session_state:
+            st.session_state["context_history"] = []
+
+        st.session_state["context_history"].append({
             "id": question_id,
             "answer": answer_text,
             "summary": summary
@@ -47,6 +52,7 @@ def add_context_entry(question_id: str, user_response, question_text: str):
         print(f"⚠️ GPT 摘要失敗：{e}")
         return "（摘要失敗）"
 
+
 def get_all_summaries() -> List[str]:
     """
     從 `qa_threads` 中獲取所有問題的摘要（最後一輪回答）。
@@ -55,16 +61,6 @@ def get_all_summaries() -> List[str]:
         f"Q{q_id}：{st.session_state.qa_threads[q_id][-1]['assistant']}"
         for q_id in st.session_state.qa_threads
     ]
-
-# sessions/context_tracker.py
-
-def get_previous_summary(question_id: str) -> str:
-    context = st.session_state.get("context_history", [])
-    for entry in reversed(context):
-        if entry["question_id"] != question_id:
-            return entry.get("summary", "")
-    return ""
-
 
 
 # --- 對話紀錄管理 ---
@@ -137,20 +133,3 @@ def generate_following_action(question_id: str) -> str:
         print("⚠️ following action 產生失敗：", e)
         return "（GPT 產生建議失敗）"
 
-def get_previous_summary(current_qid: str) -> str:
-    """
-    根據目前題目的 ID，從 session_state["context_history"] 找出上一題的摘要。
-    若找不到上一題，回傳空字串。
-    """
-    history = st.session_state.get("context_history", [])
-    if not history:
-        return ""
-
-    # 找出目前題目的 index
-    for idx, entry in enumerate(history):
-        if entry.get("question_id") == current_qid:
-            if idx > 0:
-                return history[idx - 1].get("summary", "")
-            else:
-                return ""  # 第一題就沒有上一題
-    return ""  # 沒找到目前題目

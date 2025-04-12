@@ -35,12 +35,13 @@ from managers.report_manager import ReportManager
 from managers.feedback_manager import FeedbackManager
 from src.utils.session_saver import save_to_json, load_from_json, save_to_sqlite
 from src.managers.guided_rag import GuidedRAG
-from managers.profile_manager import get_user_profile
 from sessions.answer_session import AnswerSession
 from src.components.floating_chatbox import render_floating_chatbox
 from src.utils.prompt_builder import generate_user_friendly_prompt
 from src.utils.question_utils import get_previous_summary
 from src.components.questionnaire_fragment import render_questionnaire_fragment
+from src.managers.profile_manager import get_user_profile
+user_profile = get_user_profile()
 
 if not hasattr(st, "fragment"):
     st.error("⚠️ Streamlit 版本過低，請升級至 1.36.0 以上。")
@@ -120,7 +121,7 @@ if "session" not in st.session_state:
         if session:
             if st.button("🔄 繼續上次答題進度"):
                 st.session_state.session = session
-                st.rerun()
+                st.session_state["_trigger_all_sections"] += 1
     st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
 
 # --- 初始變數 ---
@@ -133,7 +134,14 @@ if not current_q:
 # --- 問卷顯示區塊（兩段式）---
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
 render_questionnaire_fragment()
-render_floating_chatbox(question_id=current_q["id"])
+
+# ✅ 初始化聊天刷新控制變數
+if "_trigger_chat_refresh" not in st.session_state:
+    st.session_state["_trigger_chat_refresh"] = 0
+
+# ✅ 獨立區塊：右下角聊天視窗
+with st.container():
+    render_floating_chatbox(question_id=current_q["id"])
 
 # --- 題目跳轉邏輯 ---
 if st.session_state.get("jump_to"):
@@ -141,8 +149,8 @@ if st.session_state.get("jump_to"):
     index = next((i for i, item in enumerate(session.question_set) if item["id"] == qid), None)
     if index is not None:
         session.jump_to(index)
-        st.session_state["jump_to"] = None
-        st.rerun()
+    st.session_state["jump_to"] = None
+
 
 # --- 側邊欄 ---
 with st.sidebar:
@@ -171,7 +179,7 @@ with st.sidebar:
                 label = f"{i+1}. {q['text'][:20]}{' ✔' if q['id'] in answered_ids else ''}"
                 if st.button(label, key=f"jump_to_{q['id']}"):
                     st.session_state["jump_to"] = q["id"]
-                    st.rerun()
+                    st.session_state["_trigger_all_sections"] += 1  # 控制 fragment 更新
 
 # --- 完成後診斷報告 ---
 if session.current_index >= len(session.question_set):

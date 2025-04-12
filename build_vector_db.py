@@ -63,11 +63,8 @@ def main():
         chunks = pdf_processor.process_pdf(pdf_path)
         for chunk_text, raw_meta in tqdm(chunks, desc="🔹 分段與嵌入", leave=False):
             enriched = metadata_handler.enrich_metadata(raw_meta, chunk_text)
-            enriched.update({
-                "text": chunk_text,
-                "source_file": pdf_path.name,
-                "source_path": str(pdf_path.resolve())
-            })
+            enriched["text"] = chunk_text  # ✅ 關鍵：讓 chunk 有 'text' 欄位
+            
             try:
                 vector = get_embedding(chunk_text)
                 all_vectors.append(vector)
