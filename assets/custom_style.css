@@ -142,34 +142,46 @@ section.main > div.block-container {
     background-color: #45a049;
 }
 
-/* ========= Sidebar 題目列表 ========= */
-.sidebar .question-item {
-    padding: 6px 10px;
-    font-size: 15px;
-    color: #333;
-    border: none;
-    background: transparent;
-    text-align: left;
-    width: 100%;
+/* ========= Sidebar 主題區塊標題 ========= */
+.sidebar-topic-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    color: #007b8a;
+}
+
+/* ========= Sidebar 題目按鈕樣式 ========= */
+button.sidebar-question-btn {
+    all: unset;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
+    padding: 8px 12px;
+    margin: 2px 0;
+    font-size: 14.5px;
+    color: #333;
+    background-color: #f8f9fa;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.sidebar .question-item:hover {
-    background-color: #eaf6f6;
+/* Hover 效果 */
+button.sidebar-question-btn:hover {
+    background-color: #e6f7f8;
     color: #007b8a;
     font-weight: 500;
 }
 
-.sidebar .question-item.completed::after {
+/* 已完成題目打勾顯示 */
+button.sidebar-question-btn.completed::after {
     content: "✔";
     color: #4caf50;
     font-weight: bold;
     margin-left: 8px;
 }
+
 
 
 /* ========= 問卷選項內縮樣式 ========= */
@@ -275,4 +287,33 @@ button.primary-btn {
 
 button.primary-btn:hover {
     background-color: #45a049;
+}
+
+/* === 用戶與 AI 對話氣泡，加入 emoji 標頭 === */
+.chat-message.user::before {
+    content: "🙋";
+    margin-right: 6px;
+    font-size: 1.2rem;
+}
+
+.chat-message.ai::before {
+    content: "👨‍💼";
+    margin-right: 6px;
+    font-size: 1.2rem;
+}
+.chat-message span.emoji {
+    font-size: 1.1rem;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.suggestion-box {
+    background-color: #f1f8e9;
+    padding: 1rem;
+    border-left: 5px solid #8bc34a;
+    border-radius: 8px;
+    font-size: 14.5px;
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }

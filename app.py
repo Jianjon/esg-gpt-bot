@@ -6,6 +6,11 @@ if "user_name" not in st.session_state or not st.session_state.get("intro_survey
     show_welcome_page()
     st.stop()
 
+# GPT 預讀快取區
+if "gpt_prefetch" not in st.session_state:
+    st.session_state["gpt_prefetch"] = {}  # key = qid, value = {"prompt": ..., "option_notes": ...}
+
+
 import _init_app
 from pathlib import Path
 import pandas as pd
@@ -37,9 +42,12 @@ from src.utils.session_saver import save_to_json, load_from_json, save_to_sqlite
 from src.managers.guided_rag import GuidedRAG
 from sessions.answer_session import AnswerSession
 from src.components.floating_chatbox import render_floating_chatbox
+from src.sessions.context_tracker import add_context_entry, generate_following_action
+from src.utils.prompt_builder import generate_option_notes
+from src.components.intro_fragment import render_intro_fragment
+from src.components.question_guide_fragment import render_question_guide
 from src.utils.prompt_builder import generate_user_friendly_prompt
-from src.utils.question_utils import get_previous_summary
-from src.components.questionnaire_fragment import render_questionnaire_fragment
+
 from src.managers.profile_manager import get_user_profile
 user_profile = get_user_profile()
 
@@ -114,6 +122,36 @@ def load_questions(industry, stage="basic", skip_common=False):
 user_id = f"{st.session_state.get('company_name', 'unknown')}_{st.session_state.get('user_name', 'user')}"
 questions = load_questions(st.session_state.industry, stage=st.session_state.stage, skip_common=True)
 
+def prefetch_gpt_content(session, start_index: int = 1, count: int = 3):
+    from src.utils.prompt_builder import generate_user_friendly_prompt
+    from src.utils.option_notes import generate_option_notes
+    from src.managers.profile_manager import get_user_profile
+
+    user_profile = get_user_profile()
+
+    for offset in range(count):
+        index = start_index + offset
+        if index >= len(session.question_set):
+            break
+
+        q = session.question_set[index]
+        qid = q["id"]
+
+        # 若尚未快取
+        if qid not in st.session_state["gpt_prefetch"]:
+            try:
+                print(f"⏳ 預讀中：Q{qid}")
+                prompt = generate_user_friendly_prompt(q, user_profile)
+                notes = generate_option_notes(q, user_profile)
+                st.session_state["gpt_prefetch"][qid] = {
+                    "prompt": prompt,
+                    "option_notes": notes
+                }
+                print(f"✅ 預讀完成：Q{qid}")
+            except Exception as e:
+                print(f"⚠️ 預讀失敗：Q{qid} - {e}")
+
+
 if "session" not in st.session_state:
     session_file = Path("data/sessions") / f"{st.session_state.company_name}_{st.session_state.user_name}.json"
     if session_file.exists() and not st.session_state.get("reset_data", False):
@@ -124,6 +162,12 @@ if "session" not in st.session_state:
                 st.session_state["_trigger_all_sections"] += 1
     st.session_state.session = AnswerSession(user_id=user_id, question_set=questions)
 
+
+# --- 初始化控制變數 ---
+if "_trigger_all_sections" not in st.session_state:
+    st.session_state["_trigger_all_sections"] = 0
+
+
 # --- 初始變數 ---
 session: AnswerSession = st.session_state["session"]
 current_q = session.get_current_question()
@@ -133,7 +177,120 @@ if not current_q:
 
 # --- 問卷顯示區塊（兩段式）---
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
-render_questionnaire_fragment()
+
+qid = current_q["id"]
+ready_flag = f"q{qid}_ready"
+selected_key = f"selected_{qid}"
+
+if ready_flag not in st.session_state:
+    st.session_state[ready_flag] = False
+if selected_key not in st.session_state:
+    st.session_state[selected_key] = []
+
+# ✅ 第三步：當在第一題時，自動預讀後面幾題 GPT 導讀與選項說明
+if session.current_index== 0:
+    prefetch_gpt_content(session, start_index=1, count=3)
+
+# === 第一段：導論區塊（尚未準備好時顯示）===
+if not st.session_state[ready_flag]:
+    is_first = session.question_set.index(current_q) == 0
+
+    # ✅ 嘗試從快取讀取導讀語（intro_prompt），若無則即時生成
+    cached = st.session_state["gpt_prefetch"].get(qid, {})
+    intro_prompt = cached.get("prompt") or generate_user_friendly_prompt(current_q, user_profile)
+
+    # ✅ 將導讀語傳入元件
+    render_intro_fragment(current_q=current_q, is_first_question=is_first, intro_prompt=intro_prompt)
+
+    with st.form(f"ready_form_{qid}"):
+        if st.form_submit_button("✅ 我準備好了，開始作答"):
+            st.session_state[ready_flag] = True
+            st.rerun()
+
+
+# === 第二段：題目引導與作答（準備好後才顯示）===
+if st.session_state[ready_flag]:
+    render_question_guide(current_q)
+
+    # ✅ 顯示作答選項
+    options = current_q["options"]
+    notes_key = f"option_notes_{qid}"
+    notes = st.session_state.get(notes_key, {opt: "" for opt in options})
+    formatted_options = [f"{opt}：{notes.get(opt, '')}" for opt in options]
+    selected = st.session_state.get(selected_key, [])
+
+    if current_q["type"] == "single":
+        selected_html = st.radio("請選擇：", formatted_options, key=f"radio_{qid}")
+        if selected_html:
+            selected = [options[formatted_options.index(selected_html)]]
+            st.session_state[selected_key] = selected
+    else:
+        st.markdown("可複選：")
+        for i, html in enumerate(formatted_options):
+            cb_key = f"checkbox_{qid}_{options[i]}"
+            if st.checkbox(html, key=cb_key, value=options[i] in selected):
+                if options[i] not in selected:
+                    selected.append(options[i])
+            elif options[i] in selected:
+                selected.remove(options[i])
+        st.session_state[selected_key] = selected
+
+    # ✅ 顯示自訂輸入欄
+    if current_q.get("allow_custom_answer", False):
+        custom_input = st.text_input("其他補充（可不填）：", key=f"custom_{qid}")
+        if custom_input:
+            if current_q["type"] == "single":
+                selected = [custom_input]
+            else:
+                selected.append(custom_input)
+            st.session_state[selected_key] = selected
+
+    # ✅ 顯示上下題按鈕
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("⬅️ 上一題", key=f"prev_{qid}"):
+            session.go_back()
+            st.rerun()
+
+    with col2:
+        if st.button("➡️ 下一題（提交答案）", key=f"next_{qid}"):
+            if not selected:
+                st.warning("⚠️ 請先作答再繼續")
+            else:
+                # ✅ 提交作答並儲存
+                session.submit_response(selected)
+                add_context_entry(qid, selected, current_q["text"])
+                save_to_json(session)
+
+                try:
+                    from src.sessions.context_tracker import generate_following_action
+                    full_answer = "、".join(selected) if isinstance(selected, list) else selected
+                    suggestion = generate_following_action(current_q, full_answer, user_profile)
+                except Exception as e:
+                    suggestion = f"⚠️ 無法產生建議：{e}"
+
+                # ✅ 儲存建議內容與顯示狀態
+                st.session_state["last_suggestion"] = suggestion
+                st.session_state["show_suggestion_box"] = True
+
+                session.go_forward()
+                st.rerun()
+
+# === 第三段：顯示 GPT 建議區塊（可關閉）===
+if st.session_state.get("show_suggestion_box", False) and st.session_state.get("last_suggestion"):
+    with st.container():
+        col1, col2 = st.columns([12, 1])
+        with col1:
+            st.markdown(f"""
+                <div class="suggestion-box">
+                <strong>💡 根據上一題的建議</strong><br>
+                <span style="font-size:15px;">{st.session_state["last_suggestion"]}</span>
+                </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            if st.button("❌", key="close_suggestion", help="關閉提示"):
+                st.session_state["show_suggestion_box"] = False
+
 
 # ✅ 初始化聊天刷新控制變數
 if "_trigger_chat_refresh" not in st.session_state:
@@ -149,37 +306,36 @@ if st.session_state.get("jump_to"):
     index = next((i for i, item in enumerate(session.question_set) if item["id"] == qid), None)
     if index is not None:
         session.jump_to(index)
+
+        # ✅ [第五步] 補快取：若該題尚未預讀，立即補上
+        if qid not in st.session_state["gpt_prefetch"]:
+            try:
+                from src.utils.prompt_builder import generate_user_friendly_prompt
+                from src.utils.option_notes import generate_option_notes
+
+                q = session.question_set[index]
+                prompt = generate_user_friendly_prompt(q, user_profile)
+                notes = generate_option_notes(q, user_profile)
+
+                st.session_state["gpt_prefetch"][qid] = {
+                    "prompt": prompt,
+                    "option_notes": notes
+                }
+                print(f"✅ 跳題補快取完成：{qid}")
+            except Exception as e:
+                print(f"⚠️ 跳題補快取失敗：{qid} - {e}")
+
     st.session_state["jump_to"] = None
 
 
 # --- 側邊欄 ---
-with st.sidebar:
-    st.title("📋 ESG Service Path")
-    st.markdown("---")
-    st.header("👤 使用者資訊")
-    st.markdown(f"**姓名：** {st.session_state['user_name']}")
-    st.markdown(f"**階段：** {'初階' if st.session_state['stage'] == 'basic' else '進階'}")
-    st.markdown(f"**目前進度：** {session.current_index + 1} / {len(session.question_set)}")
-    st.markdown("---")
-    st.markdown("### 📊 主題進度概覽")
+from src.components.sidebar_fragment import render_sidebar_fragment
 
-    current_topic = current_q.get("topic", "")
-    answered_ids = {r["question_id"] for r in session.responses}
-    topic_groups = defaultdict(list)
-    for q in session.question_set:
-        topic_groups[q["topic"]].append(q)
+# ✅ 確保 sidebar fragment 不跟主畫面一起 rerun
+sidebar_container = st.sidebar
+with sidebar_container:
+    render_sidebar_fragment(session, current_q)
 
-    for topic, q_list in topic_groups.items():
-        total = len(q_list)
-        answered = sum(1 for q in q_list if q["id"] in answered_ids)
-        checked = "✅ " if answered == total else ""
-        expanded = topic == current_topic
-        with st.expander(f"{checked}{topic}", expanded=expanded):
-            for i, q in enumerate(q_list):
-                label = f"{i+1}. {q['text'][:20]}{' ✔' if q['id'] in answered_ids else ''}"
-                if st.button(label, key=f"jump_to_{q['id']}"):
-                    st.session_state["jump_to"] = q["id"]
-                    st.session_state["_trigger_all_sections"] += 1  # 控制 fragment 更新
 
 # --- 完成後診斷報告 ---
 if session.current_index >= len(session.question_set):
@@ -192,29 +348,41 @@ if session.current_index >= len(session.question_set):
     report = ReportManager(summary)
     feedback_mgr = FeedbackManager(summary.get("comparison", []))
 
+    # --- 顯示診斷摘要報告 ---
     st.markdown("## 📄 診斷摘要報告")
     st.markdown(report.generate_text_report())
+
     st.markdown("## 💡 題目建議")
     for fb in feedback_mgr.generate_feedback():
         st.markdown(f"- **{fb['question_id']} 建議：** {fb['feedback']}")
+
     st.markdown("## 📌 總體建議")
     st.markdown(feedback_mgr.generate_overall_feedback())
 
     save_to_json(session)
     save_to_sqlite(session)
 
+    # --- 初階問卷完成後選項 ---
     if st.session_state.stage == "basic":
         st.divider()
         st.subheader("🚀 已完成初階問卷")
+
         col1, col2 = st.columns(2)
+
         with col1:
             if st.button("📄 立即產出報告"):
                 st.toast("✅ 將根據初階問卷產出報告。")
+
         with col2:
             if st.button("📈 進入進階問卷"):
+                # 建立進階問卷內容
                 st.session_state.stage = "advanced"
                 new_qset = load_questions(st.session_state.industry, "advanced", skip_common=True)
+
+                # 過濾掉初階答過的題目
                 answered_ids = {r["question_id"] for r in session.responses}
                 new_qset = [q for q in new_qset if q["id"] not in answered_ids]
+
+                # 產生新 session
                 st.session_state.session = AnswerSession(user_id=user_id, question_set=new_qset)
                 st.rerun()

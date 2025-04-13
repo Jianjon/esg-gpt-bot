@@ -19,6 +19,11 @@ class AnswerSession:
         if question is None:
             return {"error": "No more questions."}
 
+        # ✅ 防止重複作答
+        already_answered = any(r["question_id"] == question["id"] for r in self.responses)
+        if already_answered:
+            return {"warning": "This question was already answered."}
+
         if question["type"] == "single" and not isinstance(response, str):
             return {"error": "Single-choice question requires a string response."}
         elif question["type"] == "multiple" and not isinstance(response, list):
@@ -35,6 +40,13 @@ class AnswerSession:
         self.current_index += 1
         return {"submitted": True, "next_question": self.get_current_question()}
 
+    def overwrite_response(self, question_id, new_response):
+        for r in self.responses:
+            if r["question_id"] == question_id:
+                r["user_response"] = new_response
+                return True
+        return False
+
     def jump_to(self, index: int):
         """允許從 sidebar 跳到指定題號"""
         if 0 <= index < len(self.question_set):
@@ -42,23 +54,8 @@ class AnswerSession:
             return True
         return False
 
-    def go_next(self):
-        if self.current_index + 1 < len(self.question_set):
-            self.current_index += 1
-
-
-    def go_back(self):
-        """回到上一題"""
-        if self.current_index > 0:
-            self.current_index -= 1
-
-
     def has_next(self):
         return self.current_index + 1 < len(self.question_set)
-
-    def next(self):
-        if self.has_next():
-            self.current_index += 1
 
     def is_finished(self):
         return self.finished
@@ -117,6 +114,19 @@ class AnswerSession:
                 "match": match
             })
         return comparison
+
+    def go_next(self):
+        if self.current_index + 1 < len(self.question_set):
+            self.current_index += 1
+
+    def go_forward(self):
+        """統一外部使用名稱，實際呼叫 go_next()"""
+        self.go_next()
+
+    def go_back(self):
+        """回到上一題"""
+        if self.current_index > 0:
+            self.current_index -= 1
 
     @classmethod
     def from_dict(cls, data: dict, question_set: list):

@@ -1,5 +1,5 @@
 {
-  "user_id": "TISDM_Chien,Chung Chang",
+  "user_id": "台灣國際永續發展管理協會_Chien,Chung Chang",
   "stage": "survey",
   "total_questions": 34,
   "responses": [
@@ -7,9 +7,8 @@
       "question_id": "B002",
       "question_text": "餐廳的碳盤查範圍包含哪些部分？",
       "user_response": [
-        "餐具與包裝材料",
-        "供應鏈（食材與物流）",
-        "餐點製作與廚房"
+        "餐點製作與廚房",
+        "主要營運據點"
       ],
       "question_type": "multiple",
       "topic": "邊界設定與組織資訊"
