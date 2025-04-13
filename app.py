@@ -1,6 +1,12 @@
 import streamlit as st
 st.set_page_config(page_title="ESG 淨零小幫手", page_icon="🌱", layout="centered")
 
+# --- 浮動 LOGO：固定在左上角，避開 sidebar 按鈕 ---
+st.markdown("""
+    <div class="floating-logo">📋 ESG Service Path</div>
+""", unsafe_allow_html=True)
+
+
 from src.welcome import show_welcome_page
 if "user_name" not in st.session_state or not st.session_state.get("intro_survey_submitted"):
     show_welcome_page()
@@ -41,12 +47,12 @@ from managers.feedback_manager import FeedbackManager
 from src.utils.session_saver import save_to_json, load_from_json, save_to_sqlite
 from src.managers.guided_rag import GuidedRAG
 from sessions.answer_session import AnswerSession
-from src.components.floating_chatbox import render_floating_chatbox
 from src.sessions.context_tracker import add_context_entry, generate_following_action
 from src.utils.prompt_builder import generate_option_notes
 from src.components.intro_fragment import render_intro_fragment
 from src.components.question_guide_fragment import render_question_guide
 from src.utils.prompt_builder import generate_user_friendly_prompt
+from src.components.chatbox_fragment import render_chatbox
 
 from src.managers.profile_manager import get_user_profile
 user_profile = get_user_profile()
@@ -179,6 +185,36 @@ if not current_q:
 st.markdown('<div class="main-content-container">', unsafe_allow_html=True)
 
 qid = current_q["id"]
+
+# ✅ 滾動式預抓機制（每次進入一題就往後預抓 3 題）
+# ✅ 安全預抓：僅在使用者完成當前導論後才啟動預抓
+prefetch_span = 3
+current_index = session.current_index
+ready_flag = f"q{session.get_current_question()['id']}_ready"
+
+if st.session_state.get(ready_flag, False):
+    for offset in range(1, prefetch_span + 1):
+        idx = current_index + offset
+        if idx >= len(session.question_set):
+            break
+        q = session.question_set[idx]
+        qid_prefetch = q["id"]
+        if qid_prefetch not in st.session_state["gpt_prefetch"]:
+            from src.utils.prompt_builder import generate_user_friendly_prompt
+            from src.utils.option_notes import generate_option_notes
+            from src.managers.profile_manager import get_user_profile
+            user_profile = get_user_profile()
+            try:
+                print(f"⏳ 預抓 Q{qid_prefetch}")
+                st.session_state["gpt_prefetch"][qid_prefetch] = {
+                    "prompt": generate_user_friendly_prompt(q, user_profile),
+                    "option_notes": generate_option_notes(q, user_profile)
+                }
+            except Exception as e:
+                print(f"⚠️ 預抓失敗：Q{qid_prefetch} - {e}")
+
+
+
 ready_flag = f"q{qid}_ready"
 selected_key = f"selected_{qid}"
 
@@ -186,10 +222,6 @@ if ready_flag not in st.session_state:
     st.session_state[ready_flag] = False
 if selected_key not in st.session_state:
     st.session_state[selected_key] = []
-
-# ✅ 第三步：當在第一題時，自動預讀後面幾題 GPT 導讀與選項說明
-if session.current_index== 0:
-    prefetch_gpt_content(session, start_index=1, count=3)
 
 # === 第一段：導論區塊（尚未準備好時顯示）===
 if not st.session_state[ready_flag]:
@@ -200,7 +232,13 @@ if not st.session_state[ready_flag]:
     intro_prompt = cached.get("prompt") or generate_user_friendly_prompt(current_q, user_profile)
 
     # ✅ 將導讀語傳入元件
-    render_intro_fragment(current_q=current_q, is_first_question=is_first, intro_prompt=intro_prompt)
+    render_intro_fragment(
+    current_q=current_q,
+    is_first_question=is_first,
+    intro_prompt=intro_prompt,
+    previous_suggestion=st.session_state.get("last_suggestion", "")
+)
+
 
     with st.form(f"ready_form_{qid}"):
         if st.form_submit_button("✅ 我準備好了，開始作答"):
@@ -276,29 +314,15 @@ if st.session_state[ready_flag]:
                 session.go_forward()
                 st.rerun()
 
-# === 第三段：顯示 GPT 建議區塊（可關閉）===
-if st.session_state.get("show_suggestion_box", False) and st.session_state.get("last_suggestion"):
-    with st.container():
-        col1, col2 = st.columns([12, 1])
-        with col1:
-            st.markdown(f"""
-                <div class="suggestion-box">
-                <strong>💡 根據上一題的建議</strong><br>
-                <span style="font-size:15px;">{st.session_state["last_suggestion"]}</span>
-                </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            if st.button("❌", key="close_suggestion", help="關閉提示"):
-                st.session_state["show_suggestion_box"] = False
+
+# ✅ 顯示 AI 對話區塊（每題專屬）
+with st.container():
+    render_chatbox()
 
 
 # ✅ 初始化聊天刷新控制變數
 if "_trigger_chat_refresh" not in st.session_state:
     st.session_state["_trigger_chat_refresh"] = 0
-
-# ✅ 獨立區塊：右下角聊天視窗
-with st.container():
-    render_floating_chatbox(question_id=current_q["id"])
 
 # --- 題目跳轉邏輯 ---
 if st.session_state.get("jump_to"):
@@ -386,3 +410,4 @@ if session.current_index >= len(session.question_set):
                 # 產生新 session
                 st.session_state.session = AnswerSession(user_id=user_id, question_set=new_qset)
                 st.rerun()
+

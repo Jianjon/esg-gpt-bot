@@ -89,35 +89,52 @@ def add_turn(question_id: str, user_input: str, assistant_reply: str):
 
 # --- 自動產生後續建議（進階版） ---
 def generate_following_action(current_q: dict, user_answer: str = "", user_profile: dict = None) -> str:
+    import json
+    from src.utils.gpt_tools import call_gpt
+
     question_text = current_q.get("text", "")
     topic = current_q.get("topic", "")
     learning_goal = current_q.get("learning_goal", "")
     user_profile_json = json.dumps(user_profile or {}, ensure_ascii=False, indent=2)
 
     prompt = f"""
-你是一位 ESG 顧問，請根據使用者針對下列 ESG 問題的回答內容，產出「下一步行動建議」：
+你是一位 ESG 顧問，熟悉中小企業常見營運情境與合規挑戰。請根據以下資訊，產出「3 條具體可執行的下一步行動建議」。字數控制在 160 字內。
 
-1. 建議內容需具體可行，與該題學習目標和使用者背景相關。
-2. 請條列出 3–5 點行動建議。
-3. 每個建議請簡短說明，並附上實行建議的理由。
+【目標】
+- 建議必須能真正執行，不得空泛
+- 聚焦實際行動：可以建立什麼制度、找誰合作、做哪種準備
+- 每條建議獨立成句，簡潔有力，不補充說明、不包裝語氣
 
-【使用者背景】：
+【輸出格式】
+- 每條建議以條列式開頭：✅ 建立 XXX、📌 設計 XXX 機制
+- 每條建議包含一個「明確行動」+「為何要這麼做」
+- 建議之間不需要連接詞、不需要鼓勵語、不要打招呼與結尾語
+- 不要加上「建議您」或「建議可以考慮」等模糊語句
+
+【格式提示】
+- **粗體** 用於強調重點
+- 「」用於技術術語、專有詞
+- （）用於輔助說明或判斷條件
+- 若需對比或條件選擇，可使用簡單 Markdown 表格呈現
+- 若需視覺區分，可使用反白樣式（會自動套用背景色）
+- 若需條列式說明，請使用「-」開頭的清單格式
+- 若需引用或參考資料，請使用「>」開頭的引用格式
+- 回應文字請控制在 ChatGPT 風格的內文範圍（約 16px 顯示大小）
+
+【使用者背景】
 {user_profile_json}
 
-【本題內容】：
+【題目內容】
 {question_text}
 
-【學習目標】：
+【學習目標】
 {learning_goal}
 
-【使用者回覆】：
+【使用者回覆】
 {user_answer or '（尚未填寫）'}
 
-請用以下格式輸出：
-1. 建議 A...
-2. 建議 B...
-👉 鼓勵語句
-"""
+請產出專業建議（3 條），語氣中性、不空談、不客套。
+    """
 
     try:
         reply = call_gpt(prompt=prompt)

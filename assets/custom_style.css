@@ -1,15 +1,57 @@
-
 /* ========= 基本設定 ========= */
+/* ========= 字體統一 ========= */
 body {
-    font-family: 'Segoe UI', sans-serif;
-    font-size: 16px;
-    color: #333;
+    font-family: 'Inter', 'Helvetica Neue', sans-serif;
+    font-size: 16px;       /* ✅ 內文統一用 16px */
+    line-height: 1.7;      /* ✅ 提升閱讀性，建議 1.6～1.8 */
+    color: #222;
     background-color: #ffffff;
+}
+
+
+/* ========= 標題統一風格 ========= */
+h1, h2, h3, h4, h5, .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+
+/* ========= 自訂強調字與反白標示 ========= */
+strong {
+    font-weight: 600;
+    color: #007b8a;
+}
+
+.mark-highlight {
+    background-color: #e6f7f8;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    color: #005f66;
+}
+
+/* ========= 表格樣式 ========= */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 12px;
+    margin-bottom: 12px;
+    font-size: 15px;
+}
+table th, table td {
+    border: 1px solid #ccc;
+    padding: 8px 10px;
+    text-align: left;
+}
+table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
 }
 
 /* ========= 主容器內容區：集中與留白 ========= */
 section.main > div.block-container {
-    max-width: 960px;
+    max-width: 1180px;
     margin: 0 auto;
     padding-top: 64px !important;
     padding-bottom: 120px;
@@ -66,7 +108,7 @@ section.main > div.block-container {
     color: #333;
 }
 
-
+/* ========= Chat 對話區 ========= */
 .chat-container {
     max-height: 400px;
     overflow-y: auto;
@@ -80,17 +122,14 @@ section.main > div.block-container {
 .chat-container::-webkit-scrollbar {
     width: 8px;
 }
-
 .chat-container::-webkit-scrollbar-thumb {
     background-color: #ccc;
     border-radius: 4px;
 }
 
-
-
-/* 單筆對話 - 機器人 */
 .chat-message.ai {
-    background-color: #fff7e6;
+    background-color: #e6f7f8;
+    color: #222;
     padding: 0.75rem 1rem;
     margin-bottom: 0.5rem;
     border-radius: 16px;
@@ -99,9 +138,9 @@ section.main > div.block-container {
     text-align: left;
 }
 
-/* 單筆對話 - 使用者 */
 .chat-message.user {
-    background-color: #e0f7fa;
+    background-color: #e8e8e8;
+    color: #222;
     padding: 0.75rem 1rem;
     margin-bottom: 0.5rem;
     border-radius: 16px;
@@ -111,11 +150,56 @@ section.main > div.block-container {
     text-align: right;
 }
 
-/* 系統提示訊息 */
 .chat-message.system {
     font-style: italic;
     color: gray;
     font-size: 0.9rem;
+}
+
+.chat-message.user::before {
+    content: "🙋";
+    margin-right: 6px;
+    font-size: 1.2rem;
+}
+
+chat-message.ai::before {
+    content: "👨‍💼";
+    margin-right: 6px;
+    font-size: 1.2rem;
+}
+
+/* ========= 提示建議區塊（改為藍綠系） ========= */
+.suggestion-box {
+    background-color: #e6f7f8;
+    color: #222;
+    border-left: 5px solid #007b8a;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 14.5px;
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* ========= 顧問導論區塊 ========= */
+.ai-intro-box {
+    background-color: #f5f5f5;
+    color: #222;
+    border-left: 5px solid #007b8a;
+    animation: fadeIn 0.4s ease-in-out;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+/* ========= Chat 區塊容器 ========= */
+.chat-interaction-block {
+    background-color: #f7f7f7;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    margin-bottom: 64px;
 }
 
 /* ========= 上一題／下一題按鈕 ========= */
@@ -125,195 +209,51 @@ section.main > div.block-container {
     gap: 12px;
     margin-top: 12px;
 }
-
 .nav-buttons button {
     width: 120px;
     padding: 8px 16px;
     font-size: 14px;
     border-radius: 6px;
-    background-color: #4caf50;
+    background-color: #007b8a;
     color: white;
     border: none;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
-
 .nav-buttons button:hover {
-    background-color: #45a049;
+    background-color: #005f66;
 }
 
-/* ========= Sidebar 主題區塊標題 ========= */
-.sidebar-topic-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin: 8px 0 4px;
-    color: #007b8a;
+/* ========= 公用間距 ========= */
+.spacer-xl {
+    margin-top: 48px;
 }
 
-/* ========= Sidebar 題目按鈕樣式 ========= */
-button.sidebar-question-btn {
-    all: unset;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 8px 12px;
-    margin: 2px 0;
-    font-size: 14.5px;
-    color: #333;
-    background-color: #f8f9fa;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-/* Hover 效果 */
-button.sidebar-question-btn:hover {
-    background-color: #e6f7f8;
-    color: #007b8a;
-    font-weight: 500;
-}
-
-/* 已完成題目打勾顯示 */
-button.sidebar-question-btn.completed::after {
-    content: "✔";
-    color: #4caf50;
-    font-weight: bold;
-    margin-left: 8px;
-}
-
-
-
-/* ========= 問卷選項內縮樣式 ========= */
-div[data-baseweb="radio"] label,
-div[data-baseweb="checkbox"] label {
-    padding-left: 2rem;
-}
-/* 問卷題目區塊樣式（使用 st-radio 外層樣式選取器） */
-div[data-testid="stRadio"] > label {
-    font-weight: 700;
-    font-size: 18px;
-    color: #2c3e50;
-    margin-bottom: 6px;
-}
-
-/* 分隔線上方留空，讓題目看起來分開 */
-hr {
-    margin-top: 24px;
-    margin-bottom: 24px;
-    border: none;
-    border-top: 1px solid #ccc;
-}
-/* 縮排所有 Radio / Checkbox 的選項文字 */
-.css-1c7y2kd, .stRadio > div, .stCheckbox > div {
-    padding-left: 1.5rem;
-}
-
-/* ========== 區塊樣式重構：清楚分段、留白適當 ========== */
-
-/* 🌱 AI 顧問引導區塊 */
-.ai-intro-box {
-    animation: fadeIn 0.4s ease-in-out;
-    padding: 1rem;
-    background-color: #f3fdf4;
-    border-left: 5px solid #4caf50;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    font-size: 1rem;
-}
+/* ========= 淡入動畫 ========= */
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
 }
 
-/* 🧾 問題與選項區塊 */
-.question-block {
+/* --- 左上角浮動 LOGO（避開 sidebar 縮放按鈕） --- */
+.floating-logo {
+    position: fixed;
+    top: 60px;
+    left: 20px;
+    font-size: 16px;
+    color: #007b8a;
     background-color: #ffffff;
-    padding: 24px;
-    border-radius: 12px;
-    border: 1px solid #ccc;
-    margin-bottom: 32px;
-}
-
-/* 🤖 AI 問答互動區塊 */
-.chat-interaction-block {
-    background-color: #f7f7f7;
-    padding: 24px;
-    border-radius: 12px;
-    border: 1px solid #ddd;
-    margin-bottom: 64px;
-}
-
-/* ========== 區塊標題樣式 ========== */
-.section-title {
-    font-size: 18px;
-    font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 12px;
-}
-
-.section-title::before {
-    margin-right: 8px;
-}
-
-h4 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: #2a5d84;
-    font-weight: bold;
-}
-
-
-/* 各段的 emoji 標頭 */
-.ai-intro-block .section-title::before { content: "💬"; }
-.question-block .section-title::before { content: "🧾"; }
-.chat-interaction-block .section-title::before { content: "🤖"; }
-
-/* ========== 公用間距樣式 ========== */
-.spacer-xl {
-    margin-top: 48px;
-}
-
-/* 補充：按鈕統一風格（如「提交回答」或「跳過」） */
-button.primary-btn {
-    background-color: #4caf50;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-}
-
-button.primary-btn:hover {
-    background-color: #45a049;
-}
-
-/* === 用戶與 AI 對話氣泡，加入 emoji 標頭 === */
-.chat-message.user::before {
-    content: "🙋";
-    margin-right: 6px;
-    font-size: 1.2rem;
-}
-
-.chat-message.ai::before {
-    content: "👨‍💼";
-    margin-right: 6px;
-    font-size: 1.2rem;
-}
-.chat-message span.emoji {
-    font-size: 1.1rem;
-    margin-right: 4px;
-    vertical-align: middle;
-}
-
-.suggestion-box {
-    background-color: #f1f8e9;
-    padding: 1rem;
-    border-left: 5px solid #8bc34a;
+    padding: 6px 16px;
     border-radius: 8px;
-    font-size: 14.5px;
-    margin-top: 16px;
-    animation: fadeIn 0.3s ease-in-out;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #007b8a;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    font-weight: 600;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.floating-logo::before {
+    content: "📘";
+    font-size: 18px;
 }
