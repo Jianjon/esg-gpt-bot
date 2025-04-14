@@ -5,10 +5,9 @@
   "responses": [
     {
       "question_id": "B002",
-      "question_text": "飯店的碳盤查範圍包含哪些部分？",
+      "question_text": "盤查範圍是整體工廠、特定產線或供應鏈？",
       "user_response": [
-        "供應鏈（食材、備品、清潔用品）",
-        "客房與公共設施"
+        "特定產線"
       ],
       "question_type": "multiple",
       "topic": "邊界設定與組織資訊"

@@ -3,7 +3,7 @@ st.set_page_config(page_title="ESG 淨零小幫手", page_icon="🌱", layout="c
 
 # --- 浮動 LOGO：固定在左上角，避開 sidebar 按鈕 ---
 st.markdown("""
-    <div class="floating-logo">📋 ESG Service Path</div>
+    <div class="floating-logo">📋 ESG Service Path：淨零GPT</div>
 """, unsafe_allow_html=True)
 
 
@@ -227,18 +227,20 @@ if selected_key not in st.session_state:
 if not st.session_state[ready_flag]:
     is_first = session.question_set.index(current_q) == 0
 
+    # ✅ 預先背景預抓下一批題目（避免按下「我準備好了」時才載入）
+    prefetch_gpt_content(session, start_index=current_index + 1, count=3)
+
     # ✅ 嘗試從快取讀取導讀語（intro_prompt），若無則即時生成
     cached = st.session_state["gpt_prefetch"].get(qid, {})
     intro_prompt = cached.get("prompt") or generate_user_friendly_prompt(current_q, user_profile)
 
     # ✅ 將導讀語傳入元件
     render_intro_fragment(
-    current_q=current_q,
-    is_first_question=is_first,
-    intro_prompt=intro_prompt,
-    previous_suggestion=st.session_state.get("last_suggestion", "")
-)
-
+        current_q=current_q,
+        is_first_question=is_first,
+        intro_prompt=intro_prompt,
+        previous_suggestion=st.session_state.get("last_suggestion", "")
+    )
 
     with st.form(f"ready_form_{qid}"):
         if st.form_submit_button("✅ 我準備好了，開始作答"):

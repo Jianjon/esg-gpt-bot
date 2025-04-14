@@ -29,7 +29,7 @@ def local_css(file_path):
 local_css("assets/custom_style.css")
 
 # --- Sidebar：ChatGPT 風格的 ESG Service Path ---
-st.sidebar.markdown("## ESG Service Path")
+st.sidebar.markdown("## ESG Service Path：淨零GPT")
 st.sidebar.markdown("---")
 
 # 顯示使用者名稱
@@ -119,7 +119,7 @@ if current_q:
         st.stop()
 
     # 下半部輸入區（st.chat_input）
-    if prompt := st.chat_input("針對本題還有什麼問題？可詢問 ESG 顧問 AI"):
+    if prompt := st.chat_input("針對本題還有什麼問題？可詢問淨零AI顧問"):
         with st.chat_message("user"):
             st.markdown(prompt)
 

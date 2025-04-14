@@ -5,7 +5,6 @@ from src.components.suggest_box import render_suggested_questions
 
 @st.fragment
 def render_chatbox():
-    st.markdown("#### 🧑‍🏫 淨零小幫手（測試階段以五題為限）")
 
     if "session" not in st.session_state or not st.session_state.session:
         st.info("尚未載入問卷內容")
@@ -17,6 +16,10 @@ def render_chatbox():
         return
 
     chat_id = current_q["id"]
+
+    # 初始化已問清單
+    if "asked_follow_ups" not in st.session_state:
+        st.session_state["asked_follow_ups"] = set()
 
     # 對話容器
     chat_container = st.container()
@@ -33,39 +36,6 @@ def render_chatbox():
                     st.markdown(f"🧑‍🏫 {msg['gpt']}")
 
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # 建議提問區塊
-    suggested_prompts_raw = current_q.get("follow_up", "")
-    all_suggested_prompts = [s.strip() + "？" for s in suggested_prompts_raw.split("？") if s.strip()]
-
-    if "asked_follow_ups" not in st.session_state:
-        st.session_state["asked_follow_ups"] = set()
-
-    suggested_prompts = [p for p in all_suggested_prompts if p not in st.session_state["asked_follow_ups"]]
-    render_suggested_questions(suggested_prompts)
-
-    # 若使用者點擊建議問題
-    selected = st.session_state.pop("submit_suggested_question", None)
-    if selected:
-        with chat_container:
-            with st.chat_message("user"):
-                st.markdown(f"🙋 {selected}")
-            with st.chat_message("assistant"):
-                placeholder = st.empty()
-                placeholder.markdown("⌛ 正在思考中...")
-
-                reply = call_gpt(
-                    prompt=selected,
-                    question_text=current_q["text"],
-                    learning_goal=current_q.get("learning_goal", ""),
-                    chat_history=get_conversation(chat_id),
-                    industry=st.session_state.get("industry", "")
-                )
-
-                placeholder.markdown(f"🧑‍🏫 {reply}")
-                add_turn(chat_id, selected, reply)
-                st.session_state["asked_follow_ups"].add(selected)
-                st.session_state["_trigger_chat_fragment"] = st.session_state.get("_trigger_chat_fragment", 0) + 1
 
     # 自由輸入區
     prompt_key = f"chat_{chat_id}"

@@ -10,7 +10,7 @@ user_profile = get_user_profile()
 
 @st.fragment
 def render_sidebar_fragment(session, current_q):
-    st.title("📋 ESG Service Path")
+    st.title("📋 ESG Service Path：淨零GPT")
     st.markdown("---")
     st.header("👤 使用者資訊")
     st.markdown(f"**姓名：** {st.session_state.get('user_name', '未登入')}")
