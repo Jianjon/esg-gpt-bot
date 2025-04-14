@@ -5,12 +5,26 @@
   "responses": [
     {
       "question_id": "B002",
-      "question_text": "盤查範圍是整體工廠、特定產線或供應鏈？",
+      "question_text": "餐廳的碳盤查範圍包含哪些部分？",
       "user_response": [
-        "特定產線"
+        "單一店面",
+        "主要營運據點",
+        "餐點製作與廚房",
+        "供應鏈（食材與物流）",
+        "餐具與包裝材料"
       ],
       "question_type": "multiple",
       "topic": "邊界設定與組織資訊"
+    },
+    {
+      "question_id": "S001",
+      "question_text": "溫室氣體排放的主要來源是什麼？",
+      "user_response": [
+        "建築物與設施",
+        "供應鏈"
+      ],
+      "question_type": "multiple",
+      "topic": "排放源辨識與確認"
     }
   ]
 }

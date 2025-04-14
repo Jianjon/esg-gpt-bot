@@ -1,10 +1,10 @@
+# guided_rag.py
 from typing import List, Tuple, Dict
-import openai
 import streamlit as st
-from src.utils.vector_guard import VectorStore
+from vector_builder.vector_store import VectorStore  # ✅ 替換為新的 HuggingFace VectorStore
 
 class GuidedRAG:
-    def __init__(self, vector_path="data/vector_output/", model="gpt-4"):
+    def __init__(self, vector_path="data/vector_output_hf/", model="gpt-4"):
         self.vector_store = VectorStore()
         self.vector_store.load(vector_path)
         self.model = model
@@ -16,9 +16,6 @@ class GuidedRAG:
     def build_prompt(self, user_question: str, context_chunks: List[Dict], turn: int, tone: str = "gentle") -> List[Dict]:
         context_text = "\n\n".join([chunk.get('text', '（無段落資料）') for chunk in context_chunks])
 
-
-
-        # 加入 tone 語氣風格
         tone_styles = {
             "gentle": "請使用溫和鼓勵的語氣來說明問題。",
             "professional": "請使用邏輯清晰、專業的語氣來說明問題。",
@@ -44,13 +41,11 @@ class GuidedRAG:
 
     def ask(self, user_question: str, history: List[Tuple[str, str]], turn: int = 1) -> Tuple[str, List[Dict]]:
         chunks = self.search_related_chunks(user_question)
-
-        # ⬇️ 從 session 取得 preferred_tone（若無則預設 gentle）
         tone = st.session_state.get("preferred_tone", "gentle")
-
         messages = self.build_prompt(user_question, chunks, turn, tone=tone)
 
         try:
+            import openai  # ✅ 僅於需要時載入，避免未使用仍導入錯誤
             response = openai.ChatCompletion.create(
                 model=self.model,
                 messages=messages,
@@ -62,8 +57,5 @@ class GuidedRAG:
             return f"❌ 查詢失敗：{str(e)}", []
 
     def query(self, question: str) -> str:
-        """
-        提供簡化版本：不傳歷史與回合，用於單題查詢。
-        """
         answer, _ = self.ask(user_question=question, history=[], turn=1)
         return answer

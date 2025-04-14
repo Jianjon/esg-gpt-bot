@@ -5,6 +5,7 @@ import streamlit as st
 from typing import List, Dict
 from src.managers.profile_manager import get_user_profile
 from src.utils.gpt_tools import call_gpt
+from src.utils.topic_to_rag_map import get_rag_doc_for_question  # ✅ 自動選擇向量庫
 
 # 初始化 OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -89,13 +90,26 @@ def add_turn(question_id: str, user_input: str, assistant_reply: str):
 
 # --- 自動產生後續建議（進階版） ---
 def generate_following_action(current_q: dict, user_answer: str = "", user_profile: dict = None) -> str:
+    import os
     import json
     from src.utils.gpt_tools import call_gpt
+    from src.utils.topic_to_rag_map import get_rag_doc_for_question
 
     question_text = current_q.get("text", "")
     topic = current_q.get("topic", "")
     learning_goal = current_q.get("learning_goal", "")
     user_profile_json = json.dumps(user_profile or {}, ensure_ascii=False, indent=2)
+
+    # ✅ 嘗試取得 rag_doc，並檢查向量資料夾是否存在
+    try:
+        rag_doc = get_rag_doc_for_question(current_q)
+        rag_path = os.path.join("data", "vector_output_hf", rag_doc)
+        if not os.path.exists(rag_path):
+            print(f"⚠️ 找不到向量資料夾：{rag_path}，略過 RAG。")
+            rag_doc = None
+    except Exception as e:
+        print(f"⚠️ 無法取得向量資料夾（RAG 略過）：{e}")
+        rag_doc = None
 
     prompt = f"""
 你是一位 ESG 顧問，熟悉中小企業常見營運情境與合規挑戰。請根據以下資訊，產出「3 條具體可執行的下一步行動建議」。字數控制在 160 字內。
@@ -105,18 +119,23 @@ def generate_following_action(current_q: dict, user_answer: str = "", user_profi
 - 聚焦實際行動：可以建立什麼制度、找誰合作、做哪種準備
 - 每條建議獨立成句，簡潔有力，不補充說明、不包裝語氣
 
-【輸出格式】
-- 每條建議以條列式開頭：✅ 建立 XXX、📌 設計 XXX 機制
-- 每條建議包含一個「明確行動」+「為何要這麼做」
-- 建議之間不需要連接詞、不需要鼓勵語、不要打招呼與結尾語
-- 不要加上「建議您」或「建議可以考慮」等模糊語句
+【語氣風格】
+- 請模仿 GPT 與使用者的對話語氣
+- **語氣溫和但務實**，可以加入「這樣能幫助⋯」「這樣做可以確保⋯」等解釋
+- 可搭配 **粗體關鍵詞** 或 emoji 做視覺強調
+
+【排版要求】
+- 請將建議分為 3 段，每一段以 emoji（✅ 📌 🔧 等）開頭
+- 每段落**不超過兩行**，中間可適度換行，保持 GPT 對話風格的節奏
+- 每段都應包含一個「明確行動」+「這樣做的原因」
+- 保持留白與可讀性，避免密密麻麻,排版要好看,不能太密集
+- 條列式時試得要斷行，不能太長
+
 
 【格式提示】
 - **粗體** 用於強調重點
 - 「」用於技術術語、專有詞
 - （）用於輔助說明或判斷條件
-- 若需對比或條件選擇，可使用簡單 Markdown 表格呈現
-- 若需視覺區分，可使用反白樣式（會自動套用背景色）
 - 若需條列式說明，請使用「-」開頭的清單格式
 - 若需引用或參考資料，請使用「>」開頭的引用格式
 - 回應文字請控制在 ChatGPT 風格的內文範圍（約 16px 顯示大小）
@@ -137,7 +156,9 @@ def generate_following_action(current_q: dict, user_answer: str = "", user_profi
     """
 
     try:
-        reply = call_gpt(prompt=prompt)
+        from src.utils.gpt_tools import call_gpt
+        reply = call_gpt(prompt=prompt, rag_doc=rag_doc)
         return reply.strip()
     except Exception as e:
-        return f"⚠️ 無法產生建議：{e}"
+        print(f"⚠️ GPT 呼叫失敗：{e}")
+        return "⚠️ 無法產生建議，請稍後再試。"

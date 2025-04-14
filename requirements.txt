@@ -1,21 +1,17 @@
-# 核心套件
-langchain==0.3.22
-langchain-core==0.3.50
-langchain-community==0.3.20
-langsmith==0.3.24
-openai==1.70.0
+# ========== 核心模組 ==========
 python-dotenv==1.1.0
 
-# PDF 處理
-PyMuPDF==1.25.5  # fitz
-
-# 向量處理
+# ========== 向量處理 ==========
 faiss-cpu==1.10.0
 numpy==2.2.4
+sentence-transformers==2.7.0  # ✅ HuggingFace Embeddings
 
-# 進度顯示
+# ========== PDF 處理 ==========
+PyMuPDF==1.25.5  # fitz
+
+# ========== 進度顯示 ==========
 tqdm==4.67.1
 
-# 其他工具
+# ========== UI 與展示 ==========
 streamlit==1.44.1
 matplotlib==3.10.1

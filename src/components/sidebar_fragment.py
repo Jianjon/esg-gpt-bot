@@ -12,11 +12,13 @@ user_profile = get_user_profile()
 def render_sidebar_fragment(session, current_q):
     st.title("📋 ESG Service Path：淨零GPT")
     st.markdown("---")
+
+    # === 使用者基本資訊 ===
     st.header("👤 使用者資訊")
     st.markdown(f"**姓名：** {st.session_state.get('user_name', '未登入')}")
     st.markdown(f"**階段：** {'初階' if st.session_state.get('stage') == 'basic' else '進階'}")
 
-    # ✅ 進度顯示改為「已作答題數」
+    # === 問卷進度統計 ===
     answered_ids = {r["question_id"] for r in session.responses}
     total_questions = len(session.question_set)
     answered = len(answered_ids)
@@ -25,6 +27,7 @@ def render_sidebar_fragment(session, current_q):
     st.markdown("---")
     st.markdown("### 📊 主題進度概覽")
 
+    # === 主題分類 + 題目列出 ===
     current_topic = current_q.get("topic", "")
     topic_groups = defaultdict(list)
     for q in session.question_set:
@@ -40,30 +43,37 @@ def render_sidebar_fragment(session, current_q):
             for i, q in enumerate(q_list):
                 qid = q["id"]
                 is_answered = qid in answered_ids
-                label_key = f"label_{qid}"
-                label = st.session_state.get(label_key, q["text"][:12].strip())
-                display_label = f"{'✔️ ' if is_answered else ''}{i+1}. {label}"
+                display_text = q.get("text", "").strip().replace("\n", " ").strip()
+                short_label = display_text[:16] + "..." if len(display_text) > 16 else display_text
 
-                if st.button(display_label, key=f"jump_to_{qid}"):
+                prefix = "✔️" if is_answered else "▫️"
+                label = f"{prefix} {i + 1}. {short_label}"
+
+                if st.button(label, key=f"jump_to_{qid}", use_container_width=True):
                     st.session_state["jump_to"] = qid
                     st.session_state["_trigger_all_sections"] = st.session_state.get("_trigger_all_sections", 0) + 1
 
     # === 報告區塊 ===
     st.markdown("---")
     st.subheader("🧾 測驗診斷報告")
-    st.caption(f"Debug：已回答 {answered} 題 / 共 {total_questions} 題")
 
     REQUIRED_QUESTIONS = 10
     if answered < REQUIRED_QUESTIONS:
-        st.info(f"⚠️ 請先完成至少 {REQUIRED_QUESTIONS} 題，才能查看診斷報告。\n\n💡 建議完整參與 AI 顧問教學互動，讓報告更貼近您的情境與需求。")
+        st.info(
+            f"⚠️ 請先完成至少 {REQUIRED_QUESTIONS} 題，才能查看診斷報告。\n\n"
+            "💡 建議完整參與 AI 顧問教學互動，讓報告更貼近您的情境與需求。"
+        )
     else:
-        if st.button("📄 產出目前報告（GPT-4）"):
-            with st.spinner("AI 顧問分析中..."):
-                try:
-                    context_history = st.session_state.get("context_history", [])
-                    tone = st.session_state.get("preferred_tone", "professional")
-                    report = generate_full_gpt_report(user_profile, context_history, tone=tone)
-                    st.success("✅ 報告產出完成！")
-                    st.markdown(report)
-                except Exception as e:
-                    st.error(f"❌ 報告產出失敗：{e}")
+        if st.button("📄 產出目前報告（GPT-4）", use_container_width=True):
+            context_history = st.session_state.get("context_history", [])
+            if not context_history:
+                st.warning("⚠️ 尚未有任何 AI 回饋紀錄，請先完成至少一題互動後再產出報告。")
+            else:
+                with st.spinner("AI 顧問分析中..."):
+                    try:
+                        tone = st.session_state.get("preferred_tone", "professional")
+                        report = generate_full_gpt_report(user_profile, context_history, tone=tone)
+                        st.success("✅ 報告產出完成！")
+                        st.markdown(report)
+                    except Exception as e:
+                        st.error(f"❌ 報告產出失敗：{e}")

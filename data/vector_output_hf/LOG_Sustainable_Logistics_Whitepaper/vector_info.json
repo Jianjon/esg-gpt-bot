@@ -1,0 +1,4 @@
+{
+  "vector_dim": 384,
+  "model": "sentence-transformers/all-MiniLM-L6-v2"
+}

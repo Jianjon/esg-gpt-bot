@@ -48,7 +48,7 @@ table th {
 
 /* ========= 主容器內容區：集中與留白 ========= */
 section.main > div.block-container {
-    max-width: 1180px;
+    max-width: 1400px;
     margin: 0 auto;
     padding-top: 64px !important;
     padding-bottom: 120px;
@@ -154,7 +154,7 @@ section.main > div.block-container {
 }
 
 .chat-message.user::before {
-    content: "🙋";
+    content: "";
     margin-right: 6px;
     font-size: 1.2rem;
 }
@@ -253,4 +253,14 @@ chat-message.ai::before {
 .floating-logo::before {
     content: "📘";
     font-size: 18px;
+}
+
+.ai-suggestion-box {
+    background-color: #f8f9fa;
+    border-left: 6px solid #198754;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    font-size: 16px;
+    line-height: 1.6;
 }

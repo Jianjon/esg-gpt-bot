@@ -3,8 +3,7 @@
 import json
 from src.utils.gpt_tools import call_gpt
 from src.managers.profile_manager import get_user_profile
-
-user_profile = get_user_profile()
+from src.utils.rag_retriever import get_rag_context_for_question
 
 TONE_STYLE_MAP = {
     "gentle": "語氣請溫和、鼓勵，就像是一位親切的顧問陪伴企業主學習。",
@@ -54,18 +53,7 @@ def build_learning_prompt(
     return call_gpt(prompt).strip()
 
 
-def build_intro_welcome_prompt(
-    user_profile: dict,
-    current_q: dict,
-    tone: str = "gentle"
-) -> str:
-    """
-    專用於第一題的開場歡迎與導入語。
-    根據使用者背景與學習動機產出友善說明，引導進入學習。
-    """
-    from src.utils.gpt_tools import call_gpt
-    import json
-
+def build_intro_welcome_prompt(user_profile: dict, current_q: dict, tone: str = "gentle") -> str:
     style_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
     industry = user_profile.get("industry", "某產業")
     role = user_profile.get("role", "一般成員")
@@ -91,90 +79,97 @@ def build_intro_welcome_prompt(
 🧠【格式建議】請根據內容靈活選擇適合的呈現方式：
 - 若為比較型、條件型、對應邏輯 → 可使用表格呈現
 - 若為清單、操作步驟、注意事項 → 請使用條列清單
-- 回應文字請控制在 ChatGPT 風格的內文範圍
-
-請用以下格式輸出：
-
-**角色導向說明**  
-- 小型製造業：應特別關注工廠內部各項生產活動的碳排放情況。
-- 老闆 / 負責人：需要了解企業整體碳排放情況，以制定相應的減排策略。
-
-**思考建議**  
-- 評估範圍：確定要評估的組織範圍，包括建築、設施、交通運輸等。
-- 資料準備：收集能源使用、水消耗、廢棄物處理等相關資料。
-
+- 回應文字請控制在 ChatGPT 風格的內文範圍,約 16px 顯示大小, 標題字為 18px
 
 ✅ 請產出約 150 字自然說明語句。
-回應只產出文字內容，不要加上標題或其他說明。不能直接稱呼使用者或是叫老闆及職稱.使用中性實務方式說明。
-- 不要使用「你」或「妳」這種稱呼，保持中立。
-    """
-
+- 回應只產出文字內容，不要加上標題或其他說明。
+- 不可使用「你」「妳」或「企業主」等稱謂，保持中性實務風格。
+"""
     return call_gpt(prompt).strip()
 
+def build_learning_prompt(user_profile: dict, current_q: dict, previous_summary: str, tone: str = "gentle") -> str:
+    style_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
+    industry = user_profile.get("industry", "某產業")
+    role = user_profile.get("role", "企業內部人員")
+    profile_json = json.dumps(user_profile, ensure_ascii=False, indent=2)
 
+    prompt = f"""
+你是一位 ESG 顧問，正在逐題引導企業用戶{style_instruction}完成 ESG 問卷學習。
 
-def generate_user_friendly_prompt(
-    current_q: dict,
-    user_profile: dict,
-    rag_context: str = "",
-    tone: str = "gentle"
-) -> str:
-    """
-    教科書式風格的導讀語生成器：清楚、結構統一、不打招呼、無廢話。
-    """
-    import json
-    from src.utils.gpt_tools import call_gpt
+本題為第二題以後，請根據「上一題摘要」，提供一段導論說明，幫助使用者回顧前題重點並自然進入新問題的思考及建議的管理作法。
 
+🧑‍💼【使用者角色】：{role}
+🏭【產業類別】：{industry}
+📘【使用者背景】：
+{profile_json}
+📌【上一題摘要】：
+{previous_summary or '（尚無摘要）'}
+
+✅【撰寫指引】：
+- 以一段自然語句，先回顧上題重點，再銜接說明本題重點
+- 可使用條列、分段或語句說明，保持親切、具邏輯感
+- 適當使用表情符號（📌、✅、📝）輔助強調
+- 請控制在 120–180 字之間，不需標題或額外框線
+"""
+    return call_gpt(prompt).strip()
+
+def generate_user_friendly_prompt(current_q: dict, user_profile: dict, rag_context: str = "", tone: str = "gentle") -> str:
     learning_goal = current_q.get("learning_goal", "")
     topic = current_q.get("topic", "")
     user_profile_json = json.dumps(user_profile, ensure_ascii=False, indent=2)
     industry = user_profile.get("industry", "某產業")
     role = user_profile.get("role", "企業內部人員")
 
-    # 對應語氣風格（tone）做微調說明，仍以實務導向為主
-    TONE_STYLE_MAP = {
-        "gentle": "語氣自然清晰，像教科書內的小節導讀，內容有邏輯、有層次。",
-        "professional": "語氣簡潔精準，重點導向，避免贅字與情緒詞彙。",
-        "creative": "語氣帶引導與畫面感，鼓勵使用者從場景中思考。"
-    }
+    if not rag_context:
+        try:
+            rag_context = get_rag_context_for_question(current_q)
+        except Exception as e:
+            print(f"⚠️ 無法取得補充資料：{e}")
+            rag_context = ""
+
     style_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
 
-    # GPT prompt 設計
     prompt = f"""
 你是一位資深 ESG 顧問，正在撰寫教學導讀。以下是本題內容、使用者背景與補充資料，請產出一段「教科書式導讀語」，格式統一、語氣專業自然，並依角色客製化重點說明。
 
 【任務格式】
-請用下列結構撰寫回應：
+請用下列結構撰寫回應：標題字不要太大，建議 16px
 
 【主題概述】
-一段 40–60 字簡要說明該題目的核心概念或背景。
-
-【角色導向說明】
+一段 80-100 字簡要說明該題目的核心概念或背景。說明該題目對於使用者角色的意義或影響。
 根據使用者角色，說明其應特別注意的面向，控制在 2–3 句內。
 
-【思考建議】
-以條列式列出 2–3 點評估、資料準備、或判斷方向，便於使用者作答。
+【思考建議】  
+以條列式列出 3–5 點評估、資料準備、或判斷方向，便於使用者作答。
 
-【風格限制】
-- 不使用稱謂（如您、你、企業主等），保持知識型中性語氣
-- 不打招呼、不寒暄、不客套
-- 語句清楚有層次，可搭配表情符號（如 ✅ 📌）協助視覺導引
-- 每項加入 **粗體關鍵詞**
-- 全文 180～250 字以內
-- 不使用 GPT 回應框格式，不需補充說明，不要輸出 JSON，只產出內容
-- 回應文字請控制在 ChatGPT 風格的內文範圍
+【目標】
+- 建議必須能真正執行，不得空泛
+- 聚焦實際行動：可以建立什麼制度、找誰合作、做哪種準備
+- 每條建議獨立成句，簡潔有力，不補充說明、不包裝語氣
 
+【語氣風格】
+- 請模仿 GPT 與使用者的對話語氣
+- **語氣溫和但務實**，可以加入「這樣能幫助⋯」「這樣做可以確保⋯」等解釋,不用鼓勵性語氣
+- 可搭配 **粗體關鍵詞** 或 emoji 做視覺強調
+
+【排版要求】
+- 請將建議分為 3~5 段，每一段以 emoji（✅ 📌 🔧 等）開頭
+- 每段落**不超過兩行**，中間可適度換行，保持 GPT 對話風格的節奏
+- 每段都應包含一個「明確行動」+「這樣做的原因」
+- 保持留白與可讀性，避免密密麻麻,排版要好看,不能太密集
+- 條列式時試得要斷行，不能太長
 
 【格式提示】
-- **粗體** 用於強調重點, 標題字體不要太大,維持一致性20px, 而內容字體16px
+- **粗體** 用於強調重點
 - 「」用於技術術語、專有詞
 - （）用於輔助說明或判斷條件
-- 若需對比或條件選擇，可使用簡單 Markdown 表格呈現
-- 若需視覺區分，可使用反白樣式（會自動套用背景色）
 - 若需條列式說明，請使用「-」開頭的清單格式
 - 若需引用或參考資料，請使用「>」開頭的引用格式
+- 回應文字請控制在 ChatGPT 風格的內文範圍（約 16px 顯示大小）
+- 不要使用「你」「妳」或「企業主」等稱謂，保持中性實務風格
+- 不要使用「請」或「建議」等語氣，保持中性實務風格  
 
-【學習目標】
+【學習目標】<-"超級重要"-要聚焦在這個學習目標,不需要重複題目內容,不要發散或是偏題,或講得太廣泛
 {learning_goal or '（本題尚未提供學習目標）'}
 
 【使用者角色】
@@ -193,40 +188,16 @@ def generate_user_friendly_prompt(
 {style_instruction}
 
 請依以上格式撰寫內容。
-    """
-
+"""
     return call_gpt(prompt).strip()
 
-
-from src.utils.gpt_tools import call_gpt
-import json
-
-TONE_STYLE_MAP = {
-    "gentle": "語氣請溫和、鼓勵，就像是一位親切的顧問陪伴企業主學習。",
-    "professional": "語氣請專業、邏輯清晰，像在和主管級使用者簡報重點。",
-    "creative": "語氣請啟發性、跳脫傳統，鼓勵使用者從不同視角思考。"
-}
-def generate_dynamic_question_block(
-    user_profile: dict,
-    current_q: dict,
-    user_answer: str = "",
-    tone: str = "gentle"
-) -> str:
-    import json
-    from src.utils.gpt_tools import call_gpt
-
+def generate_dynamic_question_block(user_profile: dict, current_q: dict, user_answer: str = "", tone: str = "gentle") -> str:
     question_text = current_q.get("text", "")
     question_note = current_q.get("question_note", "")
     learning_goal = current_q.get("learning_goal", "")
     role = user_profile.get("role", "企業內部人員")
     industry = user_profile.get("industry", "某產業")
     profile_json = json.dumps(user_profile, ensure_ascii=False)
-
-    TONE_STYLE_MAP = {
-        "gentle": "語氣自然、像顧問陪伴討論，強調情境差異與理解。",
-        "professional": "語氣簡潔、邏輯清晰，幫助快速判斷選項差異。",
-        "creative": "語氣具畫面感、引導發現潛在風險與機會。"
-    }
     tone_instruction = TONE_STYLE_MAP.get(tone, TONE_STYLE_MAP["gentle"])
 
     prompt = f"""
@@ -250,27 +221,36 @@ def generate_dynamic_question_block(
 
 【寫作格式要求】
 - ❌ 不打招呼、不客套、不稱呼使用者
-- ✅ 直入主題，用一段說明＋條列的方式說明該題的選項差異與判斷重點
-- ✅ 至少使用 2 個 **黑體關鍵詞**
-- ✅ 可搭配表情符號（如 ✅ 📌）輔助視覺，但不要過多
-- ✅ 結尾以一句總結，提示選項選擇要考量什麼條件
-- ✅ 請直接輸出文字內容，不需說明格式、不需 JSON、不需外框- 回應文字請控制在 ChatGPT 風格的內文範圍（約 16px 顯示大小）
+- ❌ 不需要標題或提示語，直接開始撰寫
+- ✅ 以自然語句引導使用者思考，強調選項差異或誤解
+- ✅ 可使用條列式或"分段說明"，保持親切、具邏輯感
+- ✅ 每段不超過 3 行，總字數控制在 80–120 字之間,排版要好看,不能太密集
+- 條列式時試得要斷行，不能太長
+
+【目標】
+- 引導使用者理解「該如何判斷選項」
+- 不需解釋每個選項（選項補充會另外顯示）
+- 避免密密麻麻，請用 2～3 段落，每段不超過 3 行
+
+【語氣風格】
+- 口吻親切自然，但不誇張、不自問自答
+- 像 GPT 向用戶簡單說明問題焦點的方式
+
+【排版格式】
+- 首段為「題目的意義」或「常見思考盲點」
+- 第二段用 ✅ 或 📌 引導條列，可列出 1～2 點判斷方向
+- 最後一行總結：提醒使用者依據自身情境思考
+- 不要使用「你」「妳」或「企業主」等稱謂，保持中性實務風格
+- 不要使用「請」或「建議」等語氣，保持中性實務風格
 
 📤 請根據上方內容直接撰寫一段「針對該題的顧問式提問引導語」。
-    """
-
+"""
     return call_gpt(prompt).strip()
 
-
 def generate_option_notes(current_q: dict, user_profile: dict = {}, tone: str = "gentle") -> dict:
-    """
-    根據題目選項與使用者背景，請 GPT 幫每個選項補充一段簡短清楚的說明。
-    回傳 dict 格式，例如：{"1-10人": "這是說明", ...}
-    """
     options = current_q.get('options', [])
     question_text = current_q.get('text', '')
-    option_text = "\n".join([f"- {opt}" for opt in options])  # ✅ 不要用 A. B. C. 編號
-
+    option_text = "\n".join([f"- {opt}" for opt in options])
     profile_hint = json.dumps(user_profile, ensure_ascii=False, indent=2)
 
     prompt = f"""
@@ -285,25 +265,29 @@ def generate_option_notes(current_q: dict, user_profile: dict = {}, tone: str = 
 【使用者背景】
 {profile_hint}
 
-
 📌 請根據使用者的「產業」、「角色」與「作答動機」，針對每個選項補充一句 15~25 字的中文說明。
 請盡量貼近該產業的實際情境舉例，例如內場管理、供應商合作、人力配置等。
 語氣請符合「{tone}」風格，避免使用術語或模糊字詞。
-- 回應文字請控制在 ChatGPT 風格的內文範圍（約 16px 顯示大小）
 
+請回傳 JSON 格式如下：
 {{
-  "1-10人": "說明內容",
-  "11-50人": "說明內容",
-  ...
+  "選項1": "補充說明",
+  "選項2": "補充說明"
 }}
 
-✅ 請直接輸出 JSON 結果，不需要補充說明或其他文字。
-    """
+✅ 請直接輸出 JSON 結果，不需要其他說明文字。
+"""
 
     response = call_gpt(prompt)
 
     try:
+        response = response.strip()
+        if response.startswith("```json"):
+            response = response.lstrip("```json").rstrip("```").strip()
+        elif response.startswith("```"):
+            response = response.lstrip("```").rstrip("```").strip()
+
         return json.loads(response)
     except Exception as e:
-        print(f"⚠️ GPT 回傳解析失敗：{e}")
+        print(f"⚠️ GPT 回傳解析失敗：{e}\n原始回應：{response}")
         return {opt: "" for opt in options}

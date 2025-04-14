@@ -1,0 +1,139 @@
+2025-04-14 16:42:03,886 [INFO] === 啟動 HF 嵌入程序 ===
+2025-04-14 16:42:03,890 [INFO] 處理：HOT_Efficiency_GHG_Guide.pdf
+2025-04-14 16:42:19,864 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\HOT_Efficiency_GHG_Guide
+2025-04-14 16:42:19,866 [INFO] 完成：HOT_Efficiency_GHG_Guide.pdf 共 449 筆向量
+2025-04-14 16:42:19,872 [INFO] 處理：HOT_GHG_Protocol_Restaurant_Sector.pdf
+2025-04-14 16:42:45,903 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\HOT_GHG_Protocol_Restaurant_Sector
+2025-04-14 16:42:45,903 [INFO] 完成：HOT_GHG_Protocol_Restaurant_Sector.pdf 共 728 筆向量
+2025-04-14 16:42:45,905 [INFO] 處理：HOT_HCML_Methodology_2020.pdf
+2025-04-14 16:42:55,439 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\HOT_HCML_Methodology_2020
+2025-04-14 16:42:55,440 [INFO] 完成：HOT_HCML_Methodology_2020.pdf 共 272 筆向量
+2025-04-14 16:42:55,442 [INFO] 處理：HOT_Hotels4Climate_GHG_Training.pdf
+2025-04-14 16:43:28,728 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\HOT_Hotels4Climate_GHG_Training
+2025-04-14 16:43:28,728 [INFO] 完成：HOT_Hotels4Climate_GHG_Training.pdf 共 949 筆向量
+2025-04-14 16:43:28,730 [INFO] 處理：LOG_Scope3_Guidance_PGGS.pdf
+2025-04-14 16:43:36,249 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\LOG_Scope3_Guidance_PGGS
+2025-04-14 16:43:36,250 [INFO] 完成：LOG_Scope3_Guidance_PGGS.pdf 共 210 筆向量
+2025-04-14 16:43:36,252 [INFO] 處理：LOG_Sustainable_Logistics_Whitepaper.pdf
+2025-04-14 16:43:37,980 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\LOG_Sustainable_Logistics_Whitepaper
+2025-04-14 16:43:37,980 [INFO] 完成：LOG_Sustainable_Logistics_Whitepaper.pdf 共 49 筆向量
+2025-04-14 16:43:37,982 [INFO] 處理：OFF_OE_Workplace_Whitepaper_2021.pdf
+2025-04-14 16:43:40,620 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\OFF_OE_Workplace_Whitepaper_2021
+2025-04-14 16:43:40,620 [INFO] 完成：OFF_OE_Workplace_Whitepaper_2021.pdf 共 74 筆向量
+2025-04-14 16:43:40,622 [INFO] 處理：OFF_Telecommute_Sustainability_Study.pdf
+2025-04-14 16:43:55,612 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\OFF_Telecommute_Sustainability_Study
+2025-04-14 16:43:55,613 [INFO] 完成：OFF_Telecommute_Sustainability_Study.pdf 共 383 筆向量
+2025-04-14 16:43:55,615 [INFO] 處理：RET_Scope3_GHG_Guide_FoodDrink.pdf
+2025-04-14 16:44:31,705 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\RET_Scope3_GHG_Guide_FoodDrink
+2025-04-14 16:44:31,706 [INFO] 完成：RET_Scope3_GHG_Guide_FoodDrink.pdf 共 968 筆向量
+2025-04-14 16:44:31,709 [INFO] 處理：RET_Sustainability_Whitepaper_UK_2022.pdf
+2025-04-14 16:44:33,026 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\RET_Sustainability_Whitepaper_UK_2022
+2025-04-14 16:44:33,026 [INFO] 完成：RET_Sustainability_Whitepaper_UK_2022.pdf 共 31 筆向量
+2025-04-14 16:44:33,028 [INFO] 處理：RET_Sustainable_Future_Strategy.pdf
+2025-04-14 16:44:35,798 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\RET_Sustainable_Future_Strategy
+2025-04-14 16:44:35,798 [INFO] 完成：RET_Sustainable_Future_Strategy.pdf 共 74 筆向量
+2025-04-14 16:44:35,800 [INFO] 處理：STD_ESG_EOSL_Framework_DHL.pdf
+2025-04-14 16:44:43,123 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\STD_ESG_EOSL_Framework_DHL
+2025-04-14 16:44:43,123 [INFO] 完成：STD_ESG_EOSL_Framework_DHL.pdf 共 189 筆向量
+2025-04-14 16:44:43,126 [INFO] 處理：ISO 14067.pdf
+2025-04-14 16:44:43,144 [INFO] 處理：WBCSD_carbon_footprint_Pathfinder Framework.pdf
+2025-04-14 16:44:59,349 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\WBCSD_carbon_footprint_Pathfinder Framework
+2025-04-14 16:44:59,349 [INFO] 完成：WBCSD_carbon_footprint_Pathfinder Framework.pdf 共 215 筆向量
+2025-04-14 16:44:59,352 [INFO] 處理：ghg_project_accounting.pdf
+2025-04-14 16:45:43,666 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ghg_project_accounting
+2025-04-14 16:45:43,666 [INFO] 完成：ghg_project_accounting.pdf 共 1143 筆向量
+2025-04-14 16:45:43,668 [INFO] 處理：ISO 14068-1-2023_1 .pdf
+2025-04-14 16:48:42,167 [INFO] === 啟動建置程序 ===
+2025-04-14 16:48:42,176 [INFO] 處理：ISO 14068-1-2023_1 .pdf
+2025-04-14 16:48:42,291 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:48:42,291 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:48:56,020 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO 14068-1-2023_1
+2025-04-14 16:48:56,022 [INFO] 處理：SBTi-Corporate-Manual.pdf
+2025-04-14 16:48:56,189 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:48:56,190 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:49:13,709 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\SBTi-Corporate-Manual
+2025-04-14 16:49:13,712 [INFO] 處理：SBTi-Corporate-Net-Zero-Standard-CN.pdf
+2025-04-14 16:49:13,897 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:49:13,897 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:49:27,901 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\SBTi-Corporate-Net-Zero-Standard-CN
+2025-04-14 16:49:27,902 [INFO] 處理：SBTi-manual.pdf
+2025-04-14 16:49:28,150 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:49:28,150 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:49:47,807 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\SBTi-manual
+2025-04-14 16:49:47,808 [INFO] 處理：SBTi_Above-and-Beyond-Report-on-BVCM.pdf
+2025-04-14 16:49:48,105 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:49:48,105 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:50:21,085 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\SBTi_Above-and-Beyond-Report-on-BVCM
+2025-04-14 16:50:21,087 [INFO] 處理：SBTi_Net-Zero-Standard.pdf
+2025-04-14 16:50:21,370 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:50:21,370 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:50:50,606 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\SBTi_Net-Zero-Standard
+2025-04-14 16:50:50,609 [INFO] 處理：ISO_FDIS_59004_N .pdf
+2025-04-14 16:50:50,963 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:50:50,963 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:51:15,741 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO_FDIS_59004_N
+2025-04-14 16:51:15,744 [INFO] 處理：ISO_FDIS_59010N.pdf
+2025-04-14 16:51:16,138 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:51:16,138 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:51:33,677 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO_FDIS_59010N
+2025-04-14 16:51:33,678 [INFO] 處理：ISO_FDIS_59020_N .pdf
+2025-04-14 16:51:34,522 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:51:34,522 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:52:05,324 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO_FDIS_59020_N
+2025-04-14 16:52:05,326 [INFO] 處理：WBCSD_Product-Life-Cycle-Accounting-Reporting-Standard_041613.pdf
+2025-04-14 16:52:05,845 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:52:05,845 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:52:49,261 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\WBCSD_Product-Life-Cycle-Accounting-Reporting-Standard_041613
+2025-04-14 16:52:49,262 [INFO] 處理：ghg-protocol.pdf
+2025-04-14 16:52:49,607 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:52:49,607 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:53:34,948 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ghg-protocol
+2025-04-14 16:53:34,951 [INFO] 處理：ghg_Scope3_Calculation_Guidance_0.pdf
+2025-04-14 16:53:35,849 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:53:35,849 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:54:27,453 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ghg_Scope3_Calculation_Guidance_0
+2025-04-14 16:54:27,455 [INFO] 處理：ISO 14064-1.pdf
+2025-04-14 16:54:27,491 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:54:27,491 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:54:29,884 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO 14064-1
+2025-04-14 16:54:29,886 [INFO] 處理：ISO 14064-2.pdf
+2025-04-14 16:54:30,189 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:54:30,189 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:54:41,322 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO 14064-2
+2025-04-14 16:54:41,324 [INFO] 處理：ISO-20121-2012.pdf
+2025-04-14 16:54:41,504 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:54:41,504 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:56:17,178 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO-20121-2012
+2025-04-14 16:56:17,181 [INFO] 處理：ISO_20400_2017E.pdf
+2025-04-14 16:56:17,526 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:56:17,526 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:57:10,327 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\ISO_20400_2017E
+2025-04-14 16:57:10,329 [INFO] 處理：UN_SupplyChainRep.pdf
+2025-04-14 16:57:10,488 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:57:10,488 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:57:55,960 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\UN_SupplyChainRep
+2025-04-14 16:57:55,963 [INFO] 處理：TW_2050_NetZero_path_strategy.pdf
+2025-04-14 16:57:56,153 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:57:56,153 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 16:58:56,399 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\TW_2050_NetZero_path_strategy
+2025-04-14 16:58:56,401 [INFO] 處理：TW_ghg_verification_guide_2024.pdf
+2025-04-14 16:58:56,962 [INFO] Use pytorch device_name: cpu
+2025-04-14 16:58:56,962 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 17:00:11,081 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\TW_ghg_verification_guide_2024
+2025-04-14 17:00:11,082 [INFO] 處理：TW_kaohsiung_industry_carbon_manual.pdf
+2025-04-14 17:00:11,299 [INFO] Use pytorch device_name: cpu
+2025-04-14 17:00:11,299 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 17:00:54,623 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\TW_kaohsiung_industry_carbon_manual
+2025-04-14 17:00:54,625 [INFO] 處理：TW_manufacturing_carbon_manual.pdf
+2025-04-14 17:00:54,892 [INFO] Use pytorch device_name: cpu
+2025-04-14 17:00:54,892 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 17:02:16,062 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\TW_manufacturing_carbon_manual
+2025-04-14 17:02:16,064 [INFO] 處理：TW_metal_emission_guide_2030.pdf
+2025-04-14 17:02:16,917 [INFO] Use pytorch device_name: cpu
+2025-04-14 17:02:16,917 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 17:03:17,673 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\TW_metal_emission_guide_2030
+2025-04-14 17:03:17,675 [INFO] 處理：TW_MOEA_NetZero_actionguide_2024.pdf
+2025-04-14 17:03:18,670 [INFO] Use pytorch device_name: cpu
+2025-04-14 17:03:18,670 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-14 17:04:05,773 [INFO] 向量資料與 metadata 已儲存至 data\vector_output_hf\TW_MOEA_NetZero_actionguide_2024
+2025-04-14 17:04:05,774 [INFO] === 建置完成 ===

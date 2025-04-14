@@ -2,12 +2,12 @@ import streamlit as st
 from src.loaders.question_loader import load_questions
 from src.sessions.answer_session import AnswerSession
 from src.sessions import context_tracker
-from src.generators.report_generator import generate_basic_report
-from src.utils.vector_guard import VectorStore
+from utils.report_generator import generate_basic_report
 from src.managers.guided_rag import GuidedRAG
 from src.managers.gpt_rewrite import rewrite_question_to_conversational
 from src.utils.topic_progress import get_topic_progress
 from utils.session_logger import save_to_json
+from vector_builder.vector_store import VectorStore
 import openai
 import os
 from dotenv import load_dotenv

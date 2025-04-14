@@ -8,7 +8,7 @@ import json
 import logging
 from tqdm import tqdm
 from vector_builder import PDFProcessor, MetadataHandler
-from vector_builder.embeddings import get_embedding
+from legacy.embeddings_openai_backup import get_embedding
 from vector_builder.vector_store import VectorStore
 
 def load_processed_record(record_path: Path) -> dict:

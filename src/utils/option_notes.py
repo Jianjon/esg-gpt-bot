@@ -23,21 +23,27 @@ def generate_option_notes(current_q: dict, user_profile: dict = {}, tone: str = 
 請盡量貼近該產業的實際情境舉例，例如內場管理、供應商合作、人力配置等。
 語氣請符合「{tone}」風格，避免使用術語或模糊字詞。
 
-請回傳 JSON 格式如下：
+請回傳 **純 JSON 格式**，不要加上 ```json 或任何說明：
 
 {{
-  "1-10人": "說明內容",
-  "11-50人": "說明內容",
-  ...
+  "選項A": "補充說明",
+  "選項B": "補充說明"
 }}
 
-✅ 請直接輸出 JSON 結果，不需要補充說明或其他文字。
+✅ 只輸出 JSON 結果。
 """
 
     response = call_gpt(prompt)
 
+    # 處理 GPT 回傳（移除開頭或 code block 符號）
     try:
+        response = response.strip()
+        if response.startswith("```json"):
+            response = response.lstrip("```json").rstrip("```").strip()
+        elif response.startswith("```"):
+            response = response.lstrip("```").rstrip("```").strip()
+
         return json.loads(response)
     except Exception as e:
-        print(f"⚠️ GPT 回傳解析失敗：{e}")
+        print(f"⚠️ GPT 回傳解析失敗：{e}\n原始回應：{response}")
         return {opt: "" for opt in options}
