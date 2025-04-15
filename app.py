@@ -1,4 +1,16 @@
 import streamlit as st
+import pandas as pd
+import os, sys
+
+for key, default in {
+    "qa_threads": {},
+    "context_history": [],
+    "guided_chat": [],
+    "guided_turns": 0
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
+
 st.set_page_config(page_title="ESG 淨零小幫手", page_icon="🌱", layout="centered")
 
 # --- 浮動 LOGO：固定在左上角，避開 sidebar 按鈕 ---
@@ -19,8 +31,7 @@ if "gpt_prefetch" not in st.session_state:
 
 import _init_app
 from pathlib import Path
-import pandas as pd
-import os, sys
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 # --- 樣式與頁首 ---

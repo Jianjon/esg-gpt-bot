@@ -1,16 +1,18 @@
+# src/utils/gpt_tools.py
+
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from typing import List, Dict
 from src.utils.message_builder import build_chat_messages
-from src.utils.rag_retriever import RAGRetriever  # ✅ 新增：RAG 向量補充模組
+from src.utils.rag_retriever import RAGRetriever
 import inspect
-import streamlit as st  # ✅ 若用在 Streamlit 畫面中除錯提示
+import streamlit as st
 
 # 載入環境變數
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key=api_key, timeout=20)  # ✅ 建議加上 timeout 保護
 
 def call_gpt(
     prompt: str,
@@ -18,7 +20,7 @@ def call_gpt(
     learning_goal: str = "",
     chat_history: List[Dict[str, str]] = None,
     industry: str = "",
-    rag_doc: str = None,  # ✅ 新增：指定向量文件（資料夾）名稱
+    rag_doc: str = None,
     model: str = "gpt-3.5-turbo-1106",
     temperature: float = 0.4
 ) -> str:
@@ -32,7 +34,7 @@ def call_gpt(
             retriever = RAGRetriever()
             rag_context = retriever.get_context(prompt, doc_folder=rag_doc)
 
-        # 檢查 prompt 與上下文訊息
+        # 組合 messages
         messages = build_chat_messages(
             prompt=prompt,
             question_text=question_text,
@@ -41,19 +43,20 @@ def call_gpt(
             industry=industry
         )
 
-        # 如果有 RAG 段落補充，插入在第一則 system message 後
-        if rag_context and len(messages) > 0:
+        # 插入 RAG 段落（若有）
+        if rag_context and messages:
             rag_block = f"以下是輔助參考段落（來自文獻）：\n{rag_context}"
             if messages[0]["role"] == "system":
                 messages[0]["content"] += f"\n\n{rag_block}"
             else:
                 messages.insert(0, {"role": "system", "content": rag_block})
 
+        # ✅ 印出實際送出的內容（最多前 100 字）
         print("🧪 [call_gpt] 實際送出的 messages：")
         for msg in messages:
             print(f"{msg['role']}: {msg['content'][:100]}...")
 
-        # 呼叫 OpenAI API
+        # 呼叫 OpenAI GPT
         response = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -62,15 +65,16 @@ def call_gpt(
         )
 
         content = response.choices[0].message.content.strip()
-
         if not content:
             print("⚠️ GPT 回傳為空")
+            return "⚠️ AI 回覆為空，請稍後再試。"
+
         return content
 
     except Exception as e:
         print(f"⚠️ GPT 回應錯誤：{e}")
         st.warning(f"⚠️ 無法取得 AI 回覆，請稍後再試：{e}")
-        return "目前無法取得 AI 回覆，請稍後再試。"
+        return f"⚠️ 無法取得 AI 回覆，請稍後再試：{e}"  # ✅ ← 這行你剛漏掉 return
 
-# ✅ Debug log，確認來源檔案與是否載入
+# ✅ 確認來源與是否正確載入
 print("✅ call_gpt 被載入了！來源：", inspect.getfile(call_gpt))
