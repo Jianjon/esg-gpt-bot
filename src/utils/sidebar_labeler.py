@@ -54,7 +54,7 @@ def generate_sidebar_labels_for_industry(industry: str, stage: str = "basic", da
     """
 
     # --- 呼叫 GPT 產生對應標籤 ---
-    result = call_gpt(prompt, model="gpt-4")
+    result = call_gpt(prompt, model="gpt-3.5-turbo", temperature=0.4)
     try:
         text_to_label = json.loads(result)
     except Exception as e:

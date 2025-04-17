@@ -4,7 +4,7 @@ import streamlit as st
 from vector_builder.vector_store import VectorStore  # ✅ 替換為新的 HuggingFace VectorStore
 
 class GuidedRAG:
-    def __init__(self, vector_path="data/vector_output_hf/", model="gpt-4"):
+    def __init__(self, vector_path="data/vector_output_hf/", model="gpt-3.5-turbo"):
         self.vector_store = VectorStore()
         self.vector_store.load(vector_path)
         self.model = model

@@ -128,6 +128,18 @@ class AnswerSession:
         if self.current_index > 0:
             self.current_index -= 1
 
+    def get_next_question(self):
+        """回傳下一題的問題物件（若存在）"""
+        if self.current_index + 1 < len(self.question_set):
+            return self.question_set[self.current_index + 1]
+        return None
+
+    def get_previous_question(self):
+        """回傳上一題的問題物件（若存在）"""
+        if self.current_index > 0:
+            return self.question_set[self.current_index - 1]
+        return None
+
     @classmethod
     def from_dict(cls, data: dict, question_set: list):
         """

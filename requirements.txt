@@ -2,9 +2,7 @@
 python-dotenv==1.1.0
 
 # ========== 向量處理 ==========
-faiss-cpu==1.10.0
 numpy==2.2.4
-sentence-transformers==2.7.0  # ✅ HuggingFace Embeddings
 
 # ========== PDF 處理 ==========
 PyMuPDF==1.25.5  # fitz

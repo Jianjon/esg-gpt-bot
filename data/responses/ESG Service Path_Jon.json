@@ -1,0 +1,28 @@
+{
+  "user_id": "ESG Service Path_Jon",
+  "stage": "survey",
+  "total_questions": 34,
+  "responses": [
+    {
+      "question_id": "B002",
+      "question_text": "盤查範圍是整體工廠、特定產線或供應鏈？",
+      "user_response": [
+        "工廠整體運營"
+      ],
+      "question_type": "multiple",
+      "topic": "邊界設定與組織資訊"
+    },
+    {
+      "question_id": "S001",
+      "question_text": "溫室氣體排放的主要來源是什麼？",
+      "user_response": [
+        "能源使用",
+        "運輸物流",
+        "供應鏈",
+        "製程設備"
+      ],
+      "question_type": "multiple",
+      "topic": "排放源辨識與確認"
+    }
+  ]
+}

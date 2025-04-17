@@ -7,8 +7,8 @@
       "question_id": "B002",
       "question_text": "餐廳的碳盤查範圍包含哪些部分？",
       "user_response": [
-        "單一店面",
-        "餐點製作與廚房"
+        "餐點製作與廚房",
+        "供應鏈（食材與物流）"
       ],
       "question_type": "multiple",
       "topic": "邊界設定與組織資訊"

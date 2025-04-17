@@ -382,4 +382,3 @@ if session.current_index >= len(session.question_set):
                 # 產生新 session
                 st.session_state.session = AnswerSession(user_id=user_id, question_set=new_qset)
                 st.rerun()
-

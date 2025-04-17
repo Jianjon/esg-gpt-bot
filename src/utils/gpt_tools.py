@@ -5,9 +5,17 @@ from dotenv import load_dotenv
 import os
 from typing import List, Dict
 from src.utils.message_builder import build_chat_messages
-from src.utils.rag_retriever import RAGRetriever
 import inspect
 import streamlit as st
+
+# ✅ 可選用：啟用 RAG 段落補充
+USE_RAG = os.getenv("USE_RAG", "false").lower() == "true"
+if USE_RAG:
+    try:
+        from src.utils.rag_retriever import RAGRetriever
+    except ImportError:
+        print("⚠️ 啟用 USE_RAG 但找不到 rag_retriever，自動關閉 RAG 功能")
+        USE_RAG = False
 
 # 載入環境變數
 load_dotenv()
@@ -26,11 +34,11 @@ def call_gpt(
 ) -> str:
     """
     呼叫 GPT 模型，整合問題脈絡與歷史記憶給出回答
-    可選用 RAG 模式補充段落背景
+    可選用 RAG 模式補充段落背景（需環境變數 USE_RAG=true）
     """
     try:
         rag_context = ""
-        if rag_doc:
+        if USE_RAG and rag_doc:
             retriever = RAGRetriever()
             rag_context = retriever.get_context(prompt, doc_folder=rag_doc)
 
@@ -74,7 +82,7 @@ def call_gpt(
     except Exception as e:
         print(f"⚠️ GPT 回應錯誤：{e}")
         st.warning(f"⚠️ 無法取得 AI 回覆，請稍後再試：{e}")
-        return f"⚠️ 無法取得 AI 回覆，請稍後再試：{e}"  # ✅ ← 這行你剛漏掉 return
+        return f"⚠️ 無法取得 AI 回覆，請稍後再試：{e}"
 
 # ✅ 確認來源與是否正確載入
 print("✅ call_gpt 被載入了！來源：", inspect.getfile(call_gpt))
